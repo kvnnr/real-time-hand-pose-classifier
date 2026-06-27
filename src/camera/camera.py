@@ -42,7 +42,7 @@ class Camera:
             self.config = {"camera_index": 0} 
     
     #Return self.cap.
-    def open_camera(self) -> cv.VideoCapture | None:
+    def open_camera(self) -> cv.VideoCapture | bool:
 
         """Opens the camera connection with error handling."""
 
@@ -54,8 +54,9 @@ class Camera:
 
         #Check if camera is opened 
         if not self.cap.isOpened():
-            raise RuntimeError(f"Could not open the camera stream at index {camera_indx}.")
+            raise RuntimeError(f"Error: Could not open the camera stream at index {camera_indx}.")
         print("Camera successfully initialized.")
+        
         return self.cap
 
     #Grab the frames from video | Return: NDarray (frame).
@@ -87,6 +88,7 @@ class Camera:
     #Release the camera and destry all windows
     def release_camera(self) -> None:
         
+        #Check if camera is On and turn it off
         if self.cap is not None:
             self.cap.release()
             self.cap = None

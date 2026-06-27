@@ -1,6 +1,5 @@
 from src.feature.normalizer import Normalizer
 import pytest
-import random as r
 
 #Test for validation feature
 class TestNormalizerValidation():
