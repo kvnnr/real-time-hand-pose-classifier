@@ -5,7 +5,7 @@ class TrainModel:
     Trains ML model for gesture classification.
 
     Input:
-        dataset CSV (features + labels)
+        dataset NPZ (features + labels)
 
     Process:
         Splits data into train/test

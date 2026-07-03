@@ -1,7 +1,7 @@
 import numpy as np
 import json
 
-from typing import Any, Optional, Protocol
+from typing import Protocol
 from pathlib import Path
 
 from mediapipe.tasks.python import vision
