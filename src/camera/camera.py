@@ -1,9 +1,11 @@
 from pathlib import Path
 import json
+import numpy as np
 
 from cv2.typing import MatLike
 import cv2 as cv
 
+#Main Camera Class
 class Camera:
 
     """
@@ -26,7 +28,7 @@ class Camera:
         self.cap: cv.VideoCapture | None = None #Act as a bridge from webcam to code.
         self.config =  {} #Variable for config file.
 
-        config_path = Path(__file__).parent / "config.json"
+        config_path = Path(__file__).parent.parent.parent / "config.json"
 
         #Check if the config.json is valid.
         try:
@@ -34,7 +36,7 @@ class Camera:
                 self.config = json.load(f)
 
         except FileNotFoundError: #Check if config.json is found.
-            print('Error: config.json was not found. Falling back to default camera index = 0.')
+            print('\nError: config.json was not found. Falling back to default camera index = 0.')
             self.config = {"camera_index": 0}
 
         except json.JSONDecodeError:#Check if config.json is corrupted.
@@ -42,7 +44,7 @@ class Camera:
             self.config = {"camera_index": 0} 
     
     #Return self.cap.
-    def open_camera(self) -> cv.VideoCapture | bool:
+    def open_camera(self) -> cv.VideoCapture:
 
         """Opens the camera connection with error handling."""
 
@@ -92,4 +94,28 @@ class Camera:
         if self.cap is not None:
             self.cap.release()
             self.cap = None
-            cv.destroyAllWindows()
+
+#Frame control Operations
+class FrameViewer:
+   
+    """
+    All Frame operations
+    """
+    #Initialize the Name of Window.
+    def __init__(self, window_name = "Live Stream") -> None:
+        self.window_name = window_name
+
+    #Show the Camera current frame/Window.
+    def show(self, frame: np.ndarray) -> None:
+        return cv.imshow(self.window_name, frame)
+    
+    #Initialazation of key operation.
+    def operation_key(self) -> int:
+        return cv.waitKey(1) & 0xFF
+
+    #Closes all opened window.
+    def close(self) -> None:
+        cv.destroyAllWindows()
+
+
+

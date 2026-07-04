@@ -1,4 +1,4 @@
-from src.camera.camera import Camera
+from src.camera.camera import Camera, FrameViewer
 import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
@@ -214,6 +214,7 @@ class TestCameraFeatures:
     # Test: camera release
     # -----------------------------
     def test_camera_release(self):
+
         """
         Ensure camera resource is properly released.
         """
@@ -228,3 +229,128 @@ class TestCameraFeatures:
                 "Camera reference must be cleared after release"
 
             mock_camera.release.assert_called_once()
+
+class TestFrameViewer:
+    
+    """
+    Unit tests for FrameViewer class.
+
+    Design goals:
+    - Isolate OpenCV dependencies (imshow, waitKey, destroyAllWindows)
+    - Validate correct delegation behavior
+    - Ensure stateless UI operations
+    - Avoid testing OpenCV internals
+    """
+
+    def setup_method(self):
+        """
+        Create fresh instance per test.
+
+        Why:
+        - Prevent shared state
+        - Ensure deterministic behavior
+        """
+        self.viewer = FrameViewer(window_name="TestWindow")
+
+        self.mock_frame = np.zeros((100, 100, 3), dtype=np.uint8)
+
+    # -----------------------------
+    # Test: initialization contract
+    # -----------------------------
+    def test_window_name_initialization(self):
+        """
+        Validate window name is correctly assigned.
+        """
+        assert self.viewer.window_name == "TestWindow"
+
+    # -----------------------------
+    # Test: show delegates to cv.imshow
+    # -----------------------------
+    def test_show_calls_imshow(self):
+        """
+        Ensure show() correctly delegates to OpenCV imshow.
+        """
+        with patch("src.camera.camera.cv.imshow") as mock_imshow:
+            self.viewer.show(self.mock_frame)
+
+            mock_imshow.assert_called_once_with(
+                "TestWindow",
+                self.mock_frame
+            )
+
+    # -----------------------------
+    # Test: waitKey bitmask logic
+    # -----------------------------
+    def test_operation_key_bitmask(self):
+        """
+        Ensure waitKey return is correctly masked with 0xFF.
+        """
+        with patch("src.camera.camera.cv.waitKey", return_value=0x123):
+            key = self.viewer.operation_key()
+
+            assert key == (0x123 & 0xFF)
+
+    # -----------------------------
+    # Test: waitKey delay contract
+    # -----------------------------
+    def test_operation_key_delay(self):
+        """
+        Ensure waitKey is called with correct delay parameter.
+        """
+        with patch("src.camera.camera.cv.waitKey") as mock_wait:
+            mock_wait.return_value = 0
+
+            self.viewer.operation_key()
+
+            mock_wait.assert_called_once_with(1)
+
+    # -----------------------------
+    # Test: close delegates correctly
+    # -----------------------------
+    def test_close_calls_destroy_all_windows(self):
+        """
+        Ensure close() properly triggers OpenCV cleanup.
+        """
+        with patch("src.camera.camera.cv.destroyAllWindows") as mock_destroy:
+            self.viewer.close()
+
+            mock_destroy.assert_called_once()
+
+    # -----------------------------
+    # Test: show return behavior
+    # -----------------------------
+    def test_show_returns_none_behavior(self):
+        """
+        Ensure show does not alter OpenCV behavior contract.
+        """
+        with patch("src.camera.camera.cv.imshow", return_value=None):
+            result = self.viewer.show(self.mock_frame)
+
+            assert result is None
+
+    # -----------------------------
+    # Test: stateless behavior
+    # -----------------------------
+    def test_show_is_stateless(self):
+        """
+        Ensure repeated calls do not modify internal state.
+        """
+        with patch("src.camera.camera.cv.imshow") as mock_imshow:
+            for _ in range(5):
+                self.viewer.show(self.mock_frame)
+
+            assert mock_imshow.call_count == 5
+
+    # -----------------------------
+    # Test: no side effect on state
+    # -----------------------------
+    def test_window_name_unchanged_after_operations(self):
+        """
+        Ensure UI operations do not mutate internal configuration.
+        """
+        original_name = self.viewer.window_name
+
+        with patch("src.camera.camera.cv.imshow"):
+            self.viewer.show(self.mock_frame)
+
+        assert self.viewer.window_name == original_name
