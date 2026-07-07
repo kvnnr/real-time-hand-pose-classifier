@@ -1,4 +1,4 @@
-from src.feature.normalizer import Normalizer
+from src.feature.landmark_normalizer.normalizer import Normalizer
 import pytest
 
 #Test for validation feature

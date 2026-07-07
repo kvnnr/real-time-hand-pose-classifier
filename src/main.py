@@ -5,11 +5,11 @@ from camera.camera import Camera, FrameControl
 #Hand detector Module
 from detection.hand_detector import HandDetector
 #Normalizer Module
-from feature.normalizer import Normalizer
+from src.feature.landmark_normalizer.normalizer import Normalizer
 #Keyboard_operations Module
-from utils.keyboard_operations import KeyboardOps
+from src.feature.textbox.text_box_input import TextBoxInput
 #filesystem Module
-from utils.filesystem import FileSystem
+from src.feature.foldercreation.create_folder import FolderCreation
 #text_box Module
 from ui.text_box import TextBox
 
@@ -20,7 +20,7 @@ Main Operation of the system.
 """
 def main():
 
-    #
+    #CONSTANTS
     CLOSE_KEY = 27 #ESC Key.
     SAVE_POSE_KEY = 9 #TAB Key.
     ENTER_KEY = 13 #ENTER Key.
@@ -33,9 +33,9 @@ def main():
     view = FrameControl()
     detect = HandDetector()
     normalizer = Normalizer()
-    keyboard_ops = KeyboardOps()
+    keyboard_ops = TextBoxInput()
     text_box = TextBox()
-    filesystem = FileSystem()
+    filesystem = FolderCreation()
 
     #Pipelines.
     landmark_pipeline = LandmarkPipeline(detect, normalizer)
@@ -76,6 +76,9 @@ def main():
         #Grab the Operation key.
         key = view.operation_key()
 
+        #Handle text box input and update the texts.
+        pose_label = keyboard_ops.update_text_input(key, pose_label)
+
         #Close the window.
         if key == CLOSE_KEY:
             break
@@ -91,9 +94,6 @@ def main():
             result = landmark_pipeline.extract(rgb_frames)
             print(f"\nLandmark is successfully extracted\n The landmarks:\n {result}")
             print(f"\nInfos:\nData type: {type(result)}\nNumber of Landmark:{len(result)}")
-        
-        #Handle text box input and update the texts.
-        pose_label = keyboard_ops.update_text_input(key, pose_label)
 
     #Release resources opened.   
     detect.close_mediapipe() 

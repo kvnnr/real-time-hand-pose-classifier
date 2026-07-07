@@ -1,4 +1,4 @@
-from src.utils.keyboard_operations import KeyboardOps
+from src.feature.textbox.text_box_input import TextBoxInput
 
 class TestUpdateTextInput:
 
@@ -8,7 +8,7 @@ class TestUpdateTextInput:
     Tests:
     - Backspace removes the last character.
     - Reserved keys are ignored.
-    - Printable characters are appended.
+    - Printable characters are appended.s
     """
 
     """
@@ -26,7 +26,7 @@ class TestUpdateTextInput:
     def setup_method(self):
 
         #Object creation,
-        self.kb_op = KeyboardOps()
+        self.kb_op = TextBoxInput()
         
         #Sample Inputs.
         self.text = 'Test'
