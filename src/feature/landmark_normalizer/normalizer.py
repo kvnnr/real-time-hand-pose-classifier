@@ -17,7 +17,7 @@ class Normalizer:
         Normalize hand size for scale invariance
 
     Output:
-        List of 63 floats (Hand landmarks) | List[List[float]]
+        List of 63 floats (Hand landmarks) | List[float]
     """
     
     WRIST_INDEX = 0 #Index of the wrist.

@@ -1,4 +1,4 @@
-from src.data.pose_dataset import StorePoseDataset
+from src.data.save_pose import StorePoseDataset
 import pytest
 import numpy as np
 from pathlib import Path

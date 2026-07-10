@@ -1,6 +1,5 @@
 from pathlib import Path
 import json
-import numpy as np
 
 from cv2.typing import MatLike
 import cv2 as cv
@@ -8,7 +7,10 @@ import cv2 as cv
 #Main Camera Class
 class Camera:
 
+
     """
+    MAIN PROGRAM CONTRACT: 
+            ↓
     Captures frames from webcam
     
     Inputs:
@@ -23,6 +25,10 @@ class Camera:
         Numpy Matrix of frames (RGB)
     """
 
+    #--------------------
+    #NOTE: CORE METHODS
+    #--------------------
+    
     #self.config{" "} | self.cap.
     def __init__(self) -> None:
         self.cap: cv.VideoCapture | None = None #Act as a bridge from webcam to code.
@@ -78,6 +84,11 @@ class Camera:
         
         return frame
 
+
+    #--------------------
+    #NOTE: HELPER METHODS
+    #--------------------
+
     #Convert frame from BGR -> RGB | Return: rgb_frames.
     def bgr_to_rgb(self, frames: MatLike) -> MatLike:
         """
@@ -95,28 +106,15 @@ class Camera:
             self.cap.release()
             self.cap = None
 
-#Frame control Operations
-class FrameControl:
-   
-    """
-    All Frame operations
-    """
+        #Convert frame from RGB -> BGR | Return: bgr_frames.
+    def rgb_to_bgr(self, frames: MatLike) -> MatLike:
+        """
+        Convert frames from RGB -> BGR
+        """
+        bgr_frames = cv.cvtColor(frames, cv.COLOR_RGB2BGR)
 
-    #Initialize the Name of Window.
-    def __init__(self, window_name = "Hand Pose Recognition") -> None:
-        self.window_name = window_name
+        return bgr_frames
 
-    #Show the Camera current frame/Window.
-    def show(self, frame: np.ndarray) -> None:
-        cv.imshow(self.window_name, frame)
-    
-    #Initialazation of key operation.
-    def operation_key(self) -> int:
-        return cv.waitKey(1) & 0xFF
-
-    #Closes all opened window.
-    def close(self) -> None:
-        cv.destroyAllWindows()
 
 
 

@@ -24,17 +24,15 @@ class FolderCreation:
         Attempt to create directory using mkdir with parent creation enabled
         If folder already exists, handle FileExistsError gracefully
         If system error occurs, capture and report OSError
-        Reset text value after processing
-        Return updated text state
 
     Output:
-        str
-            Updated text value (reset to empty string after folder operation)
+        None:
+            Folder named after the text.
     """
     
     #Handle creating Poses folder.
     #Folder creation. | Return: text
-    def create_folder(self, folder_path: Path, text: str) -> str:
+    def create_folder(self, folder_path: Path, text: str) -> None:
     
         #Create folder for dataset.
         try: 
@@ -43,13 +41,8 @@ class FolderCreation:
 
         #Check if the folder already exist.
         except FileExistsError:
-            print(f"Folder already exists: {folder_path}")
+            print(f"Pose folder exists: {folder_path}")
         
         #Check for any Error in creating folder.
         except OSError as e:
             print(f"Error creating folder: {e}")
-
-        #Update the text to default empty after pressing enter.
-        text = ""
-
-        return text

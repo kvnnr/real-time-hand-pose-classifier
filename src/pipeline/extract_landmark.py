@@ -1,12 +1,13 @@
 #Hand detector Module
-from detection.hand_detector import HandDetector
+from src.detection.hand_detector import HandDetector
 #Normalizer Module
 from src.feature.landmark_normalizer.normalizer import Normalizer
 
 import numpy as np
 from typing import List
 
-class LandmarkPipeline:
+class ExtractLandmarkPipeline:
+    
     """
     LandmarkPipeline Contract
 

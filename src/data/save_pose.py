@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 
 
-class StorePoseDataset:
+class SavePoseDataset:
 
     """
     Persists collected gesture data into dataset format.
@@ -16,10 +16,10 @@ class StorePoseDataset:
         Saves dataset as NPZ file. Landmark = X, Labels = Y
 
     Output:
-        NPZ of Data set. landmark = X, Labels = Y
+        NPZ of Data set. | landmark = X, Labels = Y
     """
 
-    ROOT_DIR = Path(__file__).resolve().parent.parent
+    ROOT_DIR = Path(__file__).resolve().parent.parent.parent
     DATA_SET_FILE = ROOT_DIR / "data" / "hand_pose_dataset.npz"
 
     def __init__(self):
@@ -89,7 +89,7 @@ class StorePoseDataset:
 
         return landmark_array, labels.strip()
 
-    #Add pose dataset to temporary store. | Return: self.x, self.y (with landmarks and labels inside).
+    #Add pose dataset to temporary store. | self.x, self.y (with landmarks and labels inside).
     def add_pose(self, landmark: List, labels: str) -> None:
 
         """Receives normalized landmarks and a label from the orchestration layer."""

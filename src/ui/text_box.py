@@ -40,7 +40,7 @@ class TextBox:
         textbox = self.cv.rectangle(frame, (100, 410), (500, 450), (255,255,255), 2)
         
         #Draw current text.
-        result = self.cv.putText(textbox, text, (110,440),cv.FONT_HERSHEY_SIMPLEX,1, (255,255,255), 2)
+        result = self.cv.putText(textbox,f"Enter Pose: {text}", (110,440),cv.FONT_HERSHEY_SIMPLEX,1, (255,255,255), 2)
 
         #Return the frame with updated text box.
         return result

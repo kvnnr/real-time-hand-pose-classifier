@@ -1,4 +1,5 @@
-from src.camera.camera import Camera, FrameControl
+from src.feature.frame_ops.frame_operations import FrameOps
+from src.camera.camera import Camera
 import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
@@ -250,7 +251,7 @@ class TestFrameViewer:
         - Prevent shared state
         - Ensure deterministic behavior
         """
-        self.viewer = FrameControl(window_name="TestWindow")
+        self.viewer = FrameOps(window_name="TestWindow")
 
         self.mock_frame = np.zeros((100, 100, 3), dtype=np.uint8)
 
@@ -271,7 +272,7 @@ class TestFrameViewer:
         Ensure show() correctly delegates to OpenCV imshow.
         """
         with patch("src.camera.camera.cv.imshow") as mock_imshow:
-            self.viewer.show(self.mock_frame)
+            self.viewer.update_frame(self.mock_frame)
 
             mock_imshow.assert_called_once_with(
                 "TestWindow",
@@ -286,7 +287,7 @@ class TestFrameViewer:
         Ensure waitKey return is correctly masked with 0xFF.
         """
         with patch("src.camera.camera.cv.waitKey", return_value=0x123):
-            key = self.viewer.operation_key()
+            key = self.viewer.get_key()
 
             assert key == (0x123 & 0xFF)
 
@@ -300,7 +301,7 @@ class TestFrameViewer:
         with patch("src.camera.camera.cv.waitKey") as mock_wait:
             mock_wait.return_value = 0
 
-            self.viewer.operation_key()
+            self.viewer.get_key()
 
             mock_wait.assert_called_once_with(1)
 
@@ -312,7 +313,7 @@ class TestFrameViewer:
         Ensure close() properly triggers OpenCV cleanup.
         """
         with patch("src.camera.camera.cv.destroyAllWindows") as mock_destroy:
-            self.viewer.close()
+            self.viewer.close_windows()
 
             mock_destroy.assert_called_once()
 
@@ -324,7 +325,7 @@ class TestFrameViewer:
         Ensure show does not alter OpenCV behavior contract.
         """
         with patch("src.camera.camera.cv.imshow", return_value=None):
-            result = self.viewer.show(self.mock_frame)
+            result = self.viewer.update_frame(self.mock_frame)
 
             assert result is None
 
@@ -337,7 +338,7 @@ class TestFrameViewer:
         """
         with patch("src.camera.camera.cv.imshow") as mock_imshow:
             for _ in range(5):
-                self.viewer.show(self.mock_frame)
+                self.viewer.update_frame(self.mock_frame)
 
             assert mock_imshow.call_count == 5
 
@@ -351,6 +352,6 @@ class TestFrameViewer:
         original_name = self.viewer.window_name
 
         with patch("src.camera.camera.cv.imshow"):
-            self.viewer.show(self.mock_frame)
+            self.viewer.update_frame(self.mock_frame)
 
         assert self.viewer.window_name == original_name
