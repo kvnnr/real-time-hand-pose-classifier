@@ -1,21 +1,69 @@
-from pathlib import Path
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
-from typing import Optional
+#dataset_loader.py
+from src.model.training_model_helpers.dataset_loader.dataset_loader import load_dataset
+#dataset_splitter.py
+from src.model.training_model_helpers.dataset_splitter.dataset_splitter import split_dataset
+#model_trainer.py
+from src.model.training_model_helpers.model_trainer.model_trainer import model_trainer
+#prediction_model.py
+from src.model.training_model_helpers.predict_model.prediction_model import model_predictor
+#model_accuracy.py
+from src.model.training_model_helpers.model_accuracy.model_accuracy import get_accuracy_score
+#save_model.py
+from src.model.training_model_helpers.save_model.save_trained_model import save_trained_model
+#model config schema.py
+from src.model.schemas.config_schema import ModelConfig
 
-import joblib
-import numpy as np
-import json
+from sklearn.base import ClassifierMixin
 
-class TrainModel:
+class TrainModelPipeline:
 
     """
     What:
         Trains and save ML model for pose classification.
 
+    Pipeline:
+        dataset_loader.py
+            ↓
+        dataset_splitter.py
+            ↓
+        model_trainer.py
+            ↓
+        predict_model.py
+            ↓
+        model_accuracy.py 
+            ↓
+        save_model.py 
+
+    Responbilities:
+        Take the datasets from NPZ file.
+        Train the model using the datasets.
+        Save the trained model to "trained_models" folder
+
+    Preconditions:
+        mode_config_loader.py:
+            The configuration loader of the model.
+
+        dataset_loader.py: 
+            Load the dataset from NPZ
+            
+        dataset_splitter.py: 
+            Split the dataset in two categories: train and test
+            
+        model_trainer.py: 
+            Train the model using the train datasets
+            
+        predict_model.py: 
+            Get the trained model prediction
+            
+        model_accurary.py: 
+            Evaluate the accuracy of the trained model
+            
+        save_model.py: 
+            Save the trained model into folder.
+
     Input:
-        dataset NPZ (features + labels)
+        model: ClassifierMixin
+            The Chosen classifier model with specifications.
 
     Process:
         1. Load features and labels.
@@ -31,82 +79,62 @@ class TrainModel:
 
     """
     Variables:
-        self.dataset_file_path
-         self.rdnmodel
+        self.model
+        self.accuracy
+        self.config
     """
-    def __init__(self) -> None:
 
-        #Initiate the root folder
-        self.ROOT_FOLDER = Path(__file__).resolve().parents[2]
+    def __init__(self, model: ClassifierMixin, config: ModelConfig ) -> None:
+            
+            #Set the chosen model.
+            self.model = model
 
-        #Initiate the CONFIG folder.
-        self.CONFIG_FOLDER = self.ROOT_FOLDER / "config.json"
-
-        #Load the config file.
-        with open(self.CONFIG_FOLDER, 'r') as file:
-            self.config = json.load(file)
-
-        #Load the dataset folder using config file.
-        self.dataset_file_path = self.ROOT_FOLDER / self.config['dataset']['path']
-
-        #load the RandomForestClassifier model.
-        self.rdnmodel = RandomForestClassifier(n_estimators = 200, random_state = 42)
+            #Config.
+            self.config = config
     
-    #Training the model. | Return: predictions
-    def train_and_predict_model(self, X_train: np.ndarray, X_test: np.ndarray, y_train: np.ndarray) -> Optional[np.ndarray]:
-       
-        #Train the model.
-        self.rdnmodel.fit(X_train, y_train)
+            #Store training result.
+            self.trained_model: ClassifierMixin | None = None
 
-        #Prediction from dataset.
-        predict = self.rdnmodel.predict(X_test)
+            #Store model accuracy.
+            self.accuracy: float | None = None
 
-        return predict
-
-    #Get the accuracy score of the model. | Return: accurary score
-    def get_accuracy_score(self, predictions: np.ndarray, y_test: np.ndarray) -> np.float64:
-
-        #Get the accuracy score.
-        accuracy = accuracy_score(y_test, predictions)
-
-        return accuracy
-
-    #Save the train model. | Return: None
-    def save_trained_model(self, model: RandomForestClassifier) -> None:
-        
-        #Load the trained models path using config file.
-        self.trained_models = self.ROOT_FOLDER / self.config['trained_models']['path'] / "gesture_classifier.joblib"
-
-        #Save the model.
-        joblib.dump(model, self.trained_models)
-
-    
     """
     MAIN PROGRAM ↓
     """
-    def train_and_save_model(self) -> None:
+    #Train and save the model and return accuracy score.
+    def train_and_save_model(self) -> float:
 
         """
-        PIPELINE:
-            load_dataset → Load landmarks and labels from NPZ file
+        Pipeline:
+            dataset_loader.py
                 ↓
-            split_dataset → Split the dataset for train 80% and test 20%
+            dataset_splitter.py
                 ↓
-            train_and_predict_model → Train and predict models
+            model_trainer.py
                 ↓
-            save_trained_model → Save trained model.
+            predict_model.py
+                ↓
+            model_accuracy.py 
+                ↓
+            save_model.py 
         """
         
-        #Load the landmarks and labels from NPZ.
-        X_landmarks, y_labels = self.load_dataset(self.dataset_file_path)
+        #Load the dataset from NPZ.
+        X_y_dataset = load_dataset(self.config.dataset_file_path)
 
-        #Split dataset into train and test.
-        X_train, X_test, y_train, y_test = self.split_dataset(X_landmarks, y_labels)
+        #Split the datasets.
+        splitted_dataset = split_dataset(X_y_dataset, self.config.test_size, self.config.random_state)
 
-        #Train models and give predictions.
-        predictions = self.train_and_predict_model(X_train, X_test, y_train)
+        #Train the model using datasets.
+        self.trained_model = model_trainer(splitted_dataset, self.model)
 
-        #Save trained model.
-        self.save_trained_model(self.rdnmodel)
+        #Get the model predictions.
+        predictions = model_predictor(splitted_dataset.X_test, self.trained_model)
 
+        #Evaluate the model accuracy.
+        self.accuracy = get_accuracy_score(predictions, splitted_dataset.y_test)
 
+        #Save the trained model.
+        save_trained_model(self.trained_model, self.config.trained_models_path)
+
+        return self.accuracy

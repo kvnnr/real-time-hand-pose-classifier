@@ -5,7 +5,6 @@ What:
     Handle all validation for the model_accuracy module.
 """
 
-
 def _validate_input(predictions: np.ndarray,y_test: np.ndarray):
 
     #Check data type.

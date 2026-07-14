@@ -1,11 +1,16 @@
 from sklearn.base import ClassifierMixin
 from src.model.training_model_helpers.model_trainer.trainer_validator import _validate_input
 import numpy as np
+from src.model.schemas.dataset_schema import DatasetSplit
 
 """
 What:
     Train the selected machine learning model using
     prepared landmark datasets.
+
+Preconditions:
+    dataset_schema.py:
+    Store all output in the dataclass for easy access.
 
 Responsibilities:
     - Validate training inputs.
@@ -13,16 +18,18 @@ Responsibilities:
     - Return the trained model.
 
 Input:
-    X_train: np.ndarray
-        Training features containing normalized landmarks.
+    #NOTE: splitted_dataset: DATACLASS (DatasetSplit)
+        →X_train: np.ndarray
+            Training features containing normalized landmarks.
 
-    y_train: np.ndarray
-        Training labels corresponding to each sample.
+        →y_train: np.ndarray
+            Training labels corresponding to each sample.
 
 Process:
-    1. Validate X_train and y_train.
-    2. Train the selected model.
-    3. Return the fitted model.
+    1. Unpack X_train and y_train from DatasetSplit
+    2. Validate X_train and y_train.
+    3. Train the selected model.
+    4. Return the fitted model.
 
 Output:
     model:
@@ -39,8 +46,12 @@ Invariants:
 """
 
 #Training the model. | Return: model
-def model_trainer(X_train: np.ndarray, y_train: np.ndarray, model: ClassifierMixin) -> ClassifierMixin:
+def model_trainer(splitted_dataset: DatasetSplit, model: ClassifierMixin) -> ClassifierMixin:
     
+    #Unpack X and y train.
+    X_train = splitted_dataset.X_train
+    y_train = splitted_dataset.y_train
+
     _validate_input(X_train, y_train, model)
 
     #Train the model and try to catch some error while training.

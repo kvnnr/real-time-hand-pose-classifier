@@ -175,21 +175,17 @@ def test_load_dataset_correct_shape(valid_dataset):
     assert y.shape == (100,)
 
 def test_load_dataset_missing_X(tmp_path):
+    
+    dataset_path = tmp_path / "missing_X.npz"
 
-    path = tmp_path / "missing_X.npz"
-    np.savez(
-        path,
-        y=np.array(["fist"])
-    )
-    with pytest.raises(KeyError):
-        load_dataset(path)
+    np.savez(dataset_path,y=np.array([0, 1, 2]))
+    with pytest.raises(ValueError,match="Dataset must contain"):
+        load_dataset(dataset_path)
 
 def test_load_dataset_missing_y(tmp_path):
 
-    path = tmp_path / "missing_y.npz"
-    np.savez(
-        path,
-        X=np.random.rand(1,63)
-    )
-    with pytest.raises(KeyError):
-        load_dataset(path)
+    dataset_path = tmp_path / "missing_y.npz"
+
+    np.savez(dataset_path,X=np.random.rand(10, 63))
+    with pytest.raises(ValueError, match="Dataset must contain"):
+        load_dataset(dataset_path)

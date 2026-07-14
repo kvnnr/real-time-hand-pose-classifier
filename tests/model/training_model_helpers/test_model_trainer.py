@@ -3,7 +3,7 @@ import pytest
 
 from sklearn.ensemble import RandomForestClassifier
 
-from src.model.training_model_helpers.model_trainer.trainer import model_trainer
+from src.model.training_model_helpers.model_trainer.model_trainer import model_trainer
 from src.model.training_model_helpers.model_trainer.trainer_validator import _validate_input
 
 """

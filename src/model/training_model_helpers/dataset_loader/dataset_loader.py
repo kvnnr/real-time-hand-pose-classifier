@@ -1,5 +1,6 @@
 from pathlib import Path
 from src.model.training_model_helpers.dataset_loader.loader_validator import _validate_path, _validate_X_y
+from src.model.schemas.dataset_schema import Dataset
 import numpy as np
 
 """
@@ -11,6 +12,9 @@ Responsibilities:
     dataset file (hand_pose_dataset.npz)
 
 Preconditions:
+    dataset_schema.py:
+        Store all output in the dataclass for easy access.
+
     Validator:
         Handle all validation of dataset loader module.
         →loader_validator.py
@@ -23,7 +27,7 @@ Process:
     Validate directory path.
     Load landmarks and labels from the dataset file.
     Validate X, and y.
-    Return X, y
+    Return X, y | #NOTE: via dataset(dataclass)
 
 Output:
     X:
@@ -44,8 +48,10 @@ Invariants:
 """
 
 #NOTE: MAIN FUNCTION ↓
-#Load the dataset. | Return: landmark (X) and label (y)
-def load_dataset(dataset_file_path: Path) -> tuple[np.ndarray, np.ndarray]:
+
+#Load the dataset. | Return: tuple[np.ndarray, np.ndarray]
+#Return X. y
+def load_dataset(dataset_file_path: Path) -> Dataset:
     
     _validate_path(dataset_file_path)
 
@@ -67,5 +73,5 @@ def load_dataset(dataset_file_path: Path) -> tuple[np.ndarray, np.ndarray]:
 
     _validate_X_y(X, y)
 
-    return X, y
+    return Dataset(X, y)
 

@@ -12,16 +12,5 @@
     "dataset":
     {
         "path": "data/hand_pose_dataset.npz"
-    },
-
-    "trained_models": 
-    {
-        "path": "model/trained_models"
-    },
-
-    "split": 
-    {
-        "test_size": 0.2,
-        "random_state": 42
     }
 }

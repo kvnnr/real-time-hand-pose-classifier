@@ -1,4 +1,4 @@
-from src.pipeline.extract_landmark import LandmarkPipeline
+from src.pipeline.extract_landmark import ExtractLandmarkPipeline
 import numpy as np
 
 
@@ -31,7 +31,7 @@ class TestLandmarkPipeline:
     def setup_method(self):
 
         #Object creation
-        self.pipeline = LandmarkPipeline(
+        self.pipeline = ExtractLandmarkPipeline(
             FakeDetector(),
             FakeNormalizer()
         )

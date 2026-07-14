@@ -3,8 +3,8 @@ import pytest
 
 from sklearn.ensemble import RandomForestClassifier
 
-from src.model.training_model_helpers.predict_model.predict_model import model_predictor
-from src.model.training_model_helpers.predict_model.predict_model_validator import (_validate_input,_validate_output)
+from src.model.training_model_helpers.predict_model.prediction_model import model_predictor
+from src.model.training_model_helpers.predict_model.prediction_model_validator import (_validate_input,_validate_output)
 
 """
 What:

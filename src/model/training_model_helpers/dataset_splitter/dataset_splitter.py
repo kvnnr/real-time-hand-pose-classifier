@@ -1,6 +1,7 @@
-import numpy as np
 from sklearn.model_selection import train_test_split
 from src.model.training_model_helpers.dataset_splitter.splitter_validator import _validate_input, _validate_output
+from src.model.schemas.dataset_schema import DatasetSplit
+from src.model.schemas.dataset_schema import Dataset
 
 """
 What:
@@ -12,21 +13,28 @@ Responsibilities:
     train X_train, y_train and test X_test, y_test.
 
 Preconditions:
+    dataset_schema.py:
+        Store all output in the dataclass for easy access.
+
     Validator:
         Handle all validation of dataset splitter module.
         →splitter_validator.py
 
 Input:
-    landmarks:
-        X: np.ndarray.
-    labels:
-        y: np.ndarray.
+    #NOTE: X_y_dataset: DATACLASS (Dataset)
+        →landmarks:
+            X: np.ndarray.
+        →labels:
+            y: np.ndarray.
+
     config_test_size:
         Configuration value of the test_size.
     config_random_state:
         Configuration value of the random state.
 
 Process:
+    Unpack X and y from Dataset.
+
     Validate input: (X: np.ndarray, y: np.ndarray).
 
     Split the dataset into two categories
@@ -40,7 +48,7 @@ Process:
     Validate Output: (X_train, X_test, y_train, y_test)
 
 Output:
-    Four variables all np.ndarray:
+    #NOTE: DatasetSplit: DATACLASS (DatasetSplit)
         tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
 
 Invariants:
@@ -51,8 +59,13 @@ Invariants:
 
 #NOTE: MAIN FUNCTION ↓
 #Split the data set. | Return: X_train, X_test, y_train, y_test
-def split_dataset(X: np.ndarray, y: np.ndarray, test_size: float, random_state: int) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-   
+#Return: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+def split_dataset(X_y_dataset:Dataset , test_size: float, random_state: int) -> DatasetSplit:
+    
+    #Unpack the X and y.
+    X = X_y_dataset.X_landmarks
+    y = X_y_dataset.y_labels
+    
     #Validator.
     _validate_input(X, y, test_size, random_state)
     
@@ -62,4 +75,4 @@ def split_dataset(X: np.ndarray, y: np.ndarray, test_size: float, random_state: 
     #Validator.
     _validate_output(X_train, X_test, y_train, y_test)
     
-    return X_train, X_test, y_train, y_test
+    return DatasetSplit(X_train, X_test, y_train, y_test)

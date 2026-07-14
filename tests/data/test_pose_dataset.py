@@ -1,4 +1,4 @@
-from src.data.save_pose import StorePoseDataset
+from src.data.save_pose import SavePoseDataset
 import pytest
 import numpy as np
 from pathlib import Path
@@ -29,7 +29,7 @@ class TestStorePoseDatasetValidation:
         """
 
         #Create a new object of Store Pose Dataset class.
-        self.test_dataset = StorePoseDataset()
+        self.test_dataset = SavePoseDataset()
 
         #-----------------------------
         # Helper: Mock Landmark Lists
@@ -162,7 +162,7 @@ class TestStorePoseDatasetAddPose:
         """
 
         #Create a new object of Store Pose Dataset class.
-        self.test_dataset = StorePoseDataset()
+        self.test_dataset = SavePoseDataset()
 
         #-----------------------------
         # Helper: Mock Landmark & Labels
@@ -235,7 +235,7 @@ class TestStorePoseDatasetClearStorage:
         """
 
         #Create a new object of Store Pose Dataset class.
-        self.test_dataset = StorePoseDataset()
+        self.test_dataset = SavePoseDataset()
 
         #Valid landmark and label variables
         self.valid_landmark = [0.1] * 63
@@ -282,7 +282,7 @@ class TestStorePoseDatasetSave:
         """
 
         #Create a new object of Store Pose Dataset class.
-        self.test_dataset = StorePoseDataset()
+        self.test_dataset = SavePoseDataset()
 
         #Valid landmark and label variables
         self.valid_landmark = [0.1] * 63
