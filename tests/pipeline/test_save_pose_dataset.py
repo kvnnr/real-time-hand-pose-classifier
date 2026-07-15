@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import MagicMock
 import numpy as np
 
-from src.pipeline.save_pose_dataset import SavePoseDatasetsPipeline
+from src.pipeline.extract_and_save_pose_dataset import SavePoseDatasetsPipeline
 
 
 class TestSavePoseDatasetValidation(unittest.TestCase):

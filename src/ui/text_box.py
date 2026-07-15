@@ -105,7 +105,7 @@ class TextBox:
         )
 
         self.cv.putText(frame,
-            "[TAB] Save Sample    [ESC] Exit    [=] Train Model",
+            "[TAB] Save Sample    [ESC] Exit    [=] Train New Model",
             (25, 125),
             cv.FONT_HERSHEY_SIMPLEX,
             0.5,

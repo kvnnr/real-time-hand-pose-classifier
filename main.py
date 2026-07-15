@@ -1,6 +1,7 @@
 #Pipelines:
-from src.pipeline.save_pose_dataset import SavePoseDatasetsPipeline
+from src.pipeline.extract_and_save_pose_dataset import SavePoseDatasetsPipeline
 from src.pipeline.dataset_filesystem import PoseDatasetFileSystemPipeline
+from src.model.train_pipeline import TrainModelPipeline
 
 #Models.
 from sklearn.ensemble import RandomForestClassifier
@@ -20,21 +21,27 @@ from src.ui.text_box import TextBox
 from src.feature.filesystem.create_folder import FolderCreation
 #metadata_manager
 from src.feature.filesystem.metadata_manager import MetaDataManager
-#state
-from src.core.state import AppState
+#state_schema
+from src.core.state_schema import VisionState
+#ui_schema
+from src.core.ui_schema import UiState
 #save_image
 from src.feature.save_pose_image.save_image import SavePoseImage
-#train_model_pipeline.py
-from src.model.train_pipeline import TrainModelPipeline
 #model_config.json
 from src.model.model_config.model_config_loader import load_config
+#hand_skeleton_drawer
+from src.visuals.hand_skeleton_drawer import HandSkeletonDrawer
 
 from pathlib import Path
+import mediapipe as mp
 
 """
 Main Operation of the system.
 """
 def main():
+
+    # MediaPipe hand connections
+    connections = mp.tasks.vision.HandLandmarksConnections.HAND_CONNECTIONS
 
     #CONSTANTS
     CLOSE_KEY = 27 #ESC Key.
@@ -48,13 +55,15 @@ def main():
     #Object creations.
     cam = Camera()
     view = FrameOps()
-    detect = HandDetector()
+    detector = HandDetector()
     keyboard_ops = TextBoxInput()
     text_box = TextBox()
     folder_creator = FolderCreation()
     metadata_manager = MetaDataManager()
-    state = AppState()
+    vision_state = VisionState()
+    ui_state = UiState()
     save_image = SavePoseImage()
+    skeleton_drawer = HandSkeletonDrawer(connections)
 
     #Model creation:
     model_config = load_config()
@@ -69,7 +78,7 @@ def main():
     COUNTER = 0
 
     #Folder path for datasets (PNG or JPEG).
-    dataset_folder_path = BASE_DIR / "data" / "raw" / state.pose_label
+    dataset_folder_path = BASE_DIR / "data" / "raw" / ui_state.pose_label
 
     #Initialize the camera.
     cam.open_camera()
@@ -84,40 +93,44 @@ def main():
     while True:
 
         #Folder creation for datasets (PNG or JPEG).
-        dataset_folder_path = BASE_DIR / "data" / "raw" / state.pose_label
+        dataset_folder_path = BASE_DIR / "data" / "raw" / ui_state.pose_label
         
         #Grab each frame. Return: NDarray frames (BGR)
-        state.frame = cam.get_frames()
+        vision_state.frame = cam.get_frames()
 
         #Draw Text box with updated pose_label (text).
-        state.frame = text_box.create_text_box(state.frame, state.pose_label)
-
-        #Show the latest window Screen
-        view.update_frame(state.frame)
+        vision_state.frame = text_box.create_text_box(vision_state.frame, ui_state.pose_label)
 
         #Convert the BRG -> RGB frames. | Return: RGB frames.
-        state.rgb_frame = cam.bgr_to_rgb(state.frame)
+        vision_state.rgb_frame = cam.bgr_to_rgb(vision_state.frame)
+
+        landmarks = detector.detect_hands(vision_state.rgb_frame)
+        
+        vision_state.frame = skeleton_drawer.draw(vision_state.frame, landmarks)
 
         #Grab the Operation key.
-        state.key = view.get_key()
+        ui_state.key = view.get_key()
 
         #Handle text box input and update the texts.
-        state.pose_label = keyboard_ops.update_text_input(state.key, state.pose_label)
+        ui_state.pose_label = keyboard_ops.update_text_input(ui_state.key, ui_state.pose_label)
 
+        #Show the latest window Screen
+        view.update_frame(vision_state.frame)
+        
         #Close the window.
-        if state.key == CLOSE_KEY:
+        if ui_state.key == CLOSE_KEY:
             break
 
         #When ENTER is pressed, it create a folder for the pose dataset (PNG or JPEG) and metadata file.
         #And Update the text to default empty.
-        if state.key == ENTER_KEY:  # ENTER key
-            filesystem.initiate_pose_dataset_folder(dataset_folder_path, state.pose_label)
+        if ui_state.key == ENTER_KEY:  # ENTER key
+            filesystem.initiate_pose_dataset_folder(dataset_folder_path, ui_state.pose_label)
 
         #Get landmarks
-        if state.key == SAVE_POSE_KEY:
+        if ui_state.key == SAVE_POSE_KEY:
 
             #Save the 21 landmarks to NPZ file.
-            result = save_pose_landmark.extract_and_save_landmark(state.pose_label, state.rgb_frame)
+            result = save_pose_landmark.extract_and_save_landmark(ui_state.pose_label, vision_state.rgb_frame)
             
             #Check if landmark exists.
             if result is None:
@@ -138,10 +151,10 @@ def main():
             Why:
                 To save a frame(Image copy) in normal color.
             """
-            state.bgr_frame = cam.rgb_to_bgr(state.rgb_frame)
+            vision_state.bgr_frame = cam.rgb_to_bgr(vision_state.rgb_frame)
 
             #Save the RAW FRAME (image) to pose folder.
-            save_image.save_image(dataset_folder_path, state.bgr_frame, state.pose_label, COUNTER)
+            save_image.save_image(dataset_folder_path, vision_state.bgr_frame, ui_state.pose_label, COUNTER)
 
             """
             Why counter?:
@@ -156,15 +169,15 @@ def main():
             print(f"\nInfos:\nData type: {type(result)}\nNumber of Landmark:{len(result)}")
 
         #Train the model.
-        if state.key == TRAIN_KEY:
-            state.accuracy = train.train_and_save_model()
+        if ui_state.key == TRAIN_KEY:
+            vision_state.accuracy = train.train_and_save_model()
             print(
                 "Training was successful:" \
-                f"Accuracy: {state.accuracy * 100:.2f}%"
+                f"Accuracy: {vision_state.accuracy * 100:.2f}%"
             )
 
     #Release resources opened.   
-    detect.close_mediapipe() 
+    detector.close_mediapipe() 
     cam.release_camera()
     view.close_windows()
 
