@@ -130,10 +130,7 @@ class SavePoseDataset:
         #Save compressed to save space and efficiency
         np.savez_compressed(filepath, X=X_array, y=y_array, labels=np.asarray(sorted(self.labels)))
 
-        self.logger.info(
-            "Dataset successfully saved to %s with %d samples and %d unique labels.",
-            filepath, len(self.x), len(self.labels)
-        )
+        print(f"Dataset successfully saved to {filepath} named {self.labels}")
 
         #Clear temporary storage after saving
         self.clear_temporary_storage()
