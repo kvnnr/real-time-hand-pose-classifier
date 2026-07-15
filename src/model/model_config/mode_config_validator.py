@@ -46,7 +46,7 @@ def _validate_loading_config_file(config: dict) -> None:
         "dataset_path",
         "trained_models_path",
         "test_size",
-        "random-state"
+        "random_state"
     ]
 
     #Check if all required keys exist.
@@ -62,7 +62,7 @@ def _validate_loading_config_file(config: dict) -> None:
         raise ValueError("test_size must be greater than 0 and less than 1.")
 
     #Validate random_state.
-    random_state = int(training_config["random-state"])
+    random_state = int(training_config["random_state"])
 
     if random_state < 0:
-        raise ValueError("random-state cannot be negative.")
+        raise ValueError("random_state cannot be negative.")

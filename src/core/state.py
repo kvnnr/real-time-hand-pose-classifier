@@ -16,3 +16,4 @@ class AppState:
     rgb_frame: np.ndarray | None = None
     key: Any = None
     bgr_frame: np.ndarray | None = None
+    accuracy: float | None = None

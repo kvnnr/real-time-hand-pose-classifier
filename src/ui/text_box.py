@@ -33,12 +33,12 @@ class TextBox:
     Visualization:
     +----------------------------------------------------------------------------------+
     | ┌──────────────────────────────────────────────────────────────────────────────┐ |
-    | │ Real-Time Hand Pose Dataset Collector                                       │ |
+    | │ Real-Time Hand Pose Dataset Collector                                        │ |
     | │                                                                              │ |
     | │ Current Pose : Open Palm                                                     │ |
     | │                                                                              │ |
     | │ [ENTER] Create Pose Folder                                                   │ |
-    | │ [TAB] Save Sample    [ESC] Exit                                              │ |
+    | │ [TAB] Save Sample    [ESC] Exit    [=] Train Model                                             │ |
     | └──────────────────────────────────────────────────────────────────────────────┘ |
     |                                                                                  |
     |                                                                                  |
@@ -66,7 +66,7 @@ class TextBox:
         self.cv.rectangle(
             frame,
             (15, 15),
-            (430, 150),
+            (450, 150),
             (255, 255, 255),
             2
         )
@@ -105,7 +105,7 @@ class TextBox:
         )
 
         self.cv.putText(frame,
-            "[TAB] Save Sample    [ESC] Exit",
+            "[TAB] Save Sample    [ESC] Exit    [=] Train Model",
             (25, 125),
             cv.FONT_HERSHEY_SIMPLEX,
             0.5,

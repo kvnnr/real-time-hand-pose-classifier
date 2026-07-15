@@ -14,6 +14,7 @@ from src.model.training_model_helpers.save_model.save_trained_model import save_
 from src.model.schemas.config_schema import ModelConfig
 
 from sklearn.base import ClassifierMixin
+from pathlib import Path
 
 class TrainModelPipeline:
 
@@ -65,6 +66,9 @@ class TrainModelPipeline:
         model: ClassifierMixin
             The Chosen classifier model with specifications.
 
+        config: ModelConfig
+            The configuration of the model chosen.
+
     Process:
         1. Load features and labels.
         2. Split into training and testing sets.
@@ -74,6 +78,9 @@ class TrainModelPipeline:
         6. Save the trained model.
 
     Output:
+        accuracy: float
+            The accuracy of the model
+        
         pose_classifier.joblib
     """
 
@@ -84,7 +91,7 @@ class TrainModelPipeline:
         self.config
     """
 
-    def __init__(self, model: ClassifierMixin, config: ModelConfig ) -> None:
+    def __init__(self, model: ClassifierMixin, config: ModelConfig) -> None:
             
             #Set the chosen model.
             self.model = model
@@ -101,7 +108,7 @@ class TrainModelPipeline:
     """
     MAIN PROGRAM ↓
     """
-    #Train and save the model and return accuracy score.
+    #Train and save the model. | Return: accuracy score (float).
     def train_and_save_model(self) -> float:
 
         """
@@ -120,7 +127,7 @@ class TrainModelPipeline:
         """
         
         #Load the dataset from NPZ.
-        X_y_dataset = load_dataset(self.config.dataset_file_path)
+        X_y_dataset = load_dataset(Path(self.config.dataset_file_path))
 
         #Split the datasets.
         splitted_dataset = split_dataset(X_y_dataset, self.config.test_size, self.config.random_state)
@@ -135,6 +142,6 @@ class TrainModelPipeline:
         self.accuracy = get_accuracy_score(predictions, splitted_dataset.y_test)
 
         #Save the trained model.
-        save_trained_model(self.trained_model, self.config.trained_models_path)
+        save_trained_model(self.trained_model, Path(self.config.trained_models_path))
 
         return self.accuracy

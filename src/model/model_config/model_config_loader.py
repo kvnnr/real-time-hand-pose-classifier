@@ -36,8 +36,8 @@ def load_config() -> ModelConfig:
 
     #Return the configurations.
     return ModelConfig(
-        dataset_file_path = root_folder / config["training_config"]["dataset_path"],
-        trained_models_path= root_folder / config["training_config"]["trained_models_path"],
+        dataset_file_path = config["training_config"]["dataset_path"],
+        trained_models_path = config["training_config"]["trained_models_path"],
         test_size= float(config["training_config"]["test_size"]),
-        random_state= int(config["training_config"]["random-state"])
+        random_state= int(config["training_config"]["random_state"])
     )

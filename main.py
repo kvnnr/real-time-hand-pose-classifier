@@ -2,6 +2,9 @@
 from src.pipeline.save_pose_dataset import SavePoseDatasetsPipeline
 from src.pipeline.dataset_filesystem import PoseDatasetFileSystemPipeline
 
+#Models.
+from sklearn.ensemble import RandomForestClassifier
+
 #Module:
 #Camera
 from src.camera.camera import Camera
@@ -21,6 +24,10 @@ from src.feature.filesystem.metadata_manager import MetaDataManager
 from src.core.state import AppState
 #save_image
 from src.feature.save_pose_image.save_image import SavePoseImage
+#train_model_pipeline.py
+from src.model.train_pipeline import TrainModelPipeline
+#model_config.json
+from src.model.model_config.model_config_loader import load_config
 
 from pathlib import Path
 
@@ -33,6 +40,7 @@ def main():
     CLOSE_KEY = 27 #ESC Key.
     SAVE_POSE_KEY = 9 #TAB Key.
     ENTER_KEY = 13 #ENTER Key.
+    TRAIN_KEY = 61 #Equal key.
 
     #Set Base directory of project folder.
     BASE_DIR = Path(__file__).resolve().parent
@@ -48,6 +56,11 @@ def main():
     state = AppState()
     save_image = SavePoseImage()
 
+    #Model creation:
+    model_config = load_config()
+    model = RandomForestClassifier(n_estimators=200, random_state= model_config.random_state)
+    train = TrainModelPipeline(model, model_config)
+    
     #Pipelines.
     save_pose_landmark = SavePoseDatasetsPipeline()
     filesystem = PoseDatasetFileSystemPipeline(folder_creator, metadata_manager)
@@ -142,6 +155,13 @@ def main():
 
             print(f"\nInfos:\nData type: {type(result)}\nNumber of Landmark:{len(result)}")
 
+        #Train the model.
+        if state.key == TRAIN_KEY:
+            state.accuracy = train.train_and_save_model()
+            print(
+                "Training was successful:" \
+                f"Accuracy: {state.accuracy * 100:.2f}%"
+            )
 
     #Release resources opened.   
     detect.close_mediapipe() 
