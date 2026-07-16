@@ -1,207 +1,185 @@
-#Pipelines:
+# Controller
+from src.controller.vision_controller import VisionController
+
+
+# Pipelines
 from src.pipeline.extract_and_save_pose_dataset import SavePoseDatasetsPipeline
 from src.pipeline.dataset_filesystem import PoseDatasetFileSystemPipeline
 from src.model.train_pipeline import TrainModelPipeline
 from src.pipeline.extract_landmark import ExtractLandmarkPipeline
 
-#Models.
+
+# Models
 from sklearn.ensemble import RandomForestClassifier
 from src.Inference.live_model import PredictionModel
 
-#Module:
-#Camera
+
+# Camera
 from src.camera.camera import Camera
-#FrameControls
+
+# Frame Controls
 from src.feature.frame_ops.frame_operations import FrameOps
-#Hand detector
+
+# Detection
 from src.detection.hand_detector import HandDetector
-#Keyboard_operations
+
+# Keyboard
 from src.feature.textbox.text_box_input import TextBoxInput
-#text_box
-from src.ui.text_box import TextBox
-#create_folder
+
+# UI
+from src.ui.ui_renderer import UIRenderer
+
+# File System
 from src.feature.filesystem.create_folder import FolderCreation
-#metadata_manager
 from src.feature.filesystem.metadata_manager import MetaDataManager
-#state_schema
-from src.core.state_schema import VisionState
-#ui_schema
-from src.core.ui_schema import UiState
-#save_image
+
+# State
+from src.schemas.state_schema import VisionState
+from src.schemas.ui_schema import UiState
+
+# Dataset
 from src.feature.save_pose_image.save_image import SavePoseImage
-#model_config.json
+
+# Model Config
 from src.model.model_config.model_config_loader import load_config
-#hand_skeleton_drawer
+
+# Visualization
 from src.visuals.hand_skeleton_drawer import HandSkeletonDrawer
-#normalizer.py
+
+# Feature
 from src.feature.landmark_normalizer.normalizer import Normalizer
+
+#Event Manager
+from src.controller.event_manager import EventManager
 
 from pathlib import Path
 import mediapipe as mp
-import numpy as np
+
 
 """
 Main Operation of the system.
+
+Responsible for:
+
+    1. Creating system components.
+    2. Injecting dependencies.
+    3. Starting controller.
+
+The application logic is handled
+inside VisionController.
 """
+
 def main():
 
-    # MediaPipe hand connections
-    connections = mp.tasks.vision.HandLandmarksConnections.HAND_CONNECTIONS
-
-    #CONSTANTS
-    CLOSE_KEY = 27 #ESC Key.
-    SAVE_POSE_KEY = 9 #TAB Key.
-    ENTER_KEY = 13 #ENTER Key.
-    TRAIN_KEY = 61 #Equal key.
-
-    #Set Base directory of project folder.
+    # Project directory.
     BASE_DIR = Path(__file__).resolve().parent
 
-    #Object creations.
+    # MediaPipe skeleton topology.
+    connections = (mp.tasks.vision.HandLandmarksConnections.HAND_CONNECTIONS)
+
+    # -----------------------------
+    # Core Modules
+    # -----------------------------
+
     cam = Camera()
+
     view = FrameOps()
+
     detector = HandDetector()
+
     normalizer = Normalizer()
+
     keyboard_ops = TextBoxInput()
-    text_box = TextBox()
+
+    ui = UIRenderer()
+
+    event_manager = EventManager()
+
+
+    # -----------------------------
+    # State
+    # -----------------------------
+
+    vision_state = VisionState()
+
+    ui_state = UiState()
+
+
+    # -----------------------------
+    # Visualization
+    # -----------------------------
+
+    skeleton_drawer = HandSkeletonDrawer(connections)
+
+    # -----------------------------
+    # Feature Pipeline
+    # -----------------------------
+
+    extract_landmarks = ExtractLandmarkPipeline(detector,normalizer)
+
+    # -----------------------------
+    # Dataset Pipeline
+    # -----------------------------
+
     folder_creator = FolderCreation()
     metadata_manager = MetaDataManager()
-    vision_state = VisionState()
-    ui_state = UiState()
-    save_image = SavePoseImage()
-    skeleton_drawer = HandSkeletonDrawer(connections)
-    extract_landmarks = ExtractLandmarkPipeline(detector, normalizer)
-
-    #Model creation:
-    model_config = load_config()
-    model = RandomForestClassifier(n_estimators=200, random_state= model_config.random_state)
-    train = TrainModelPipeline(model, model_config)
-    
-    #The Live predictor model.
-    predictor = PredictionModel()
-    
-    #Pipelines.
+    filesystem = PoseDatasetFileSystemPipeline(folder_creator,metadata_manager)
     save_pose_landmark = SavePoseDatasetsPipeline()
-    filesystem = PoseDatasetFileSystemPipeline(folder_creator, metadata_manager)
-    
-    #Variables:
-    COUNTER = 0
+    save_image = SavePoseImage()
 
-    #Folder path for datasets (PNG or JPEG).
-    dataset_folder_path = BASE_DIR / "data" / "raw" / ui_state.pose_label
+    # -----------------------------
+    # Model
+    # -----------------------------
 
-    #Initialize the camera.
-    cam.open_camera()
+    model_config = load_config()
 
-    """
-    Why:
-        A continuous loop is used to fetch frames from 
-        the video stream in real time. The loop runs 
-        until an exit condition is met, 
-        allowing controlled termination of the capture process.
-    """
-    while True:
+    model = RandomForestClassifier(n_estimators=200, random_state=model_config.random_state)
 
-        #Folder creation for datasets (PNG or JPEG).
-        dataset_folder_path = BASE_DIR / "data" / "raw" / ui_state.pose_label
+    train = TrainModelPipeline(model, model_config)
+
+    predictor = PredictionModel()
+
+    # -----------------------------
+    # Controller
+    # -----------------------------
+
+    controller = VisionController(
+
+        cam=cam,
+
+        view=view,
+
+        detector=detector,
+
+        predictor=predictor,
+
+        ui=ui,
+
+        keyboard_ops=keyboard_ops,
         
-        #Grab each frame. Return: NDarray frames (BGR)
-        vision_state.frame = cam.get_frames()
+        event_manager=event_manager,
 
-        #Draw Text box with updated pose_label (text).
-        vision_state.frame = text_box.create_text_box(vision_state.frame, ui_state.pose_label)
+        skeleton_drawer=skeleton_drawer,
 
-        #Convert the BRG -> RGB frames. | Return: RGB frames.
-        vision_state.rgb_frame = cam.bgr_to_rgb(vision_state.frame)
+        extract_landmarks=extract_landmarks,
 
-        landmarks = detector.detect_hands(vision_state.rgb_frame)
-        
-        vision_state.frame = skeleton_drawer.draw(vision_state.frame, landmarks)
+        train=train,
 
-        #Predict gesture.
-        if landmarks is not None:
+        save_pose_landmark=save_pose_landmark,
 
-            #Extract and normalized 21 hand landmarks.
-            vision_state.features =  extract_landmarks.extract(vision_state.rgb_frame)
+        filesystem=filesystem,
 
-            #Check if hands is detected.
-            if vision_state.features is not None:
-                prediction = predictor.predict(np.array(vision_state.features))
+        save_image=save_image,
 
-                print(f"Prediction: {prediction}")
+        metadata_manager=metadata_manager,
 
-        #Grab the Operation key.
-        ui_state.key = view.get_key()
+        vision_state=vision_state,
 
-        #Handle text box input and update the texts.
-        ui_state.pose_label = keyboard_ops.update_text_input(ui_state.key, ui_state.pose_label)
+        ui_state=ui_state
+    )
 
-        #Show the latest window Screen
-        view.update_frame(vision_state.frame)
-        
-        #Close the window.
-        if ui_state.key == CLOSE_KEY:
-            break
-
-        #When ENTER is pressed, it create a folder for the pose dataset (PNG or JPEG) and metadata file.
-        #And Update the text to default empty.
-        if ui_state.key == ENTER_KEY:  # ENTER key
-            filesystem.initiate_pose_dataset_folder(dataset_folder_path, ui_state.pose_label)
-
-        #Get landmarks
-        if ui_state.key == SAVE_POSE_KEY:
-
-            #Save the 21 landmarks to NPZ file.
-            result = save_pose_landmark.extract_and_save_landmark(ui_state.pose_label, vision_state.rgb_frame)
-            
-            #Check if landmark exists.
-            if result is None:
-                print(
-                    "\nWARNING:"
-                    "\nNo landmarks detected."
-                    "\nPlease show your hand clearly and press TAB again."
-                )
-
-                continue
-            
-            #Get the Counter key in the metadatafile of specified pose folder.
-            COUNTER = metadata_manager.get_metadata(dataset_folder_path, "counter")
-
-            """
-            NOTE: HELPER FUNCTION TO .save_image
-            Convert RGB → BGR 
-            Why:
-                To save a frame(Image copy) in normal color.
-            """
-            vision_state.bgr_frame = cam.rgb_to_bgr(vision_state.rgb_frame)
-
-            #Save the RAW FRAME (image) to pose folder.
-            save_image.save_image(dataset_folder_path, vision_state.bgr_frame, ui_state.pose_label, COUNTER)
-
-            """
-            Why counter?:
-                Counter act as a metadata for naming the numbers of frame(image) dataset inside 
-                respective pose folders.
-            """
-            COUNTER += 1
-
-            #Update the metadata counter.
-            metadata_manager.update_metadata(dataset_folder_path, 'counter', COUNTER)
-
-            print(f"\nInfos:\nData type: {type(result)}\nNumber of Landmark:{len(result)}")
-
-        #Train the model.
-        if ui_state.key == TRAIN_KEY:
-            vision_state.accuracy = train.train_and_save_model()
-            print(
-                "Training was successful:" \
-                f"Accuracy: {vision_state.accuracy * 100:.2f}%"
-            )
-
-    #Release resources opened.   
-    detector.close_mediapipe() 
-    cam.release_camera()
-    view.close_windows()
+    # Start application.
+    controller.run()
 
 if __name__ == "__main__":
     main()

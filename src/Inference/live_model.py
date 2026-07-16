@@ -1,11 +1,9 @@
-# src/model/prediction_model.py
 
 from pathlib import Path
 
 import joblib
 import numpy as np
 from sklearn.base import ClassifierMixin
-
 
 class PredictionModel:
     """
@@ -16,50 +14,86 @@ class PredictionModel:
         Shape: (63,)
 
     Process:
-        Converts the landmarks into the expected
-        scikit-learn input shape and predicts the pose.
+        1. Validate input.
+        2. Reshape features for sklearn.
+        3. Predict class label.
+        4. Calculate prediction confidence.
 
     Output:
-        Predicted pose label.
+        Tuple:
+            (
+                predicted_pose,
+                confidence
+            )
+
+        confidence:
+            Float between 0.0 - 1.0
 
     Failure Conditions:
-        Raises FileNotFoundError
-            If the trained model does not exist.
+        FileNotFoundError:
+            Trained model does not exist.
 
-        Raises ValueError
-            If the feature vector is invalid.
+        ValueError:
+            Invalid feature shape.
+
+        AttributeError:
+            Model does not support probability prediction.
     """
 
     ROOT_DIR = Path(__file__).resolve().parent.parent
     MODEL_PATH = ROOT_DIR / "trained_models" / "pose_classifier.joblib"
 
+
     def __init__(self) -> None:
+        
         """
-        Why:
-            Loads the trained classifier once during
-            object construction.
+        Loads trained classifier once.
         """
 
         self._model: ClassifierMixin = joblib.load(self.MODEL_PATH)
 
-    def predict(self, features: np.ndarray) -> str:
+    def predict(self, features: np.ndarray) -> tuple[str, float]:
+        
         """
-        Predict a hand gesture.
+        Predict hand gesture with confidence.
 
         Input:
-            features
-                Shape: (63,)
+            features:
+                Normalized landmark vector.
 
-        Return:
-            Predicted pose label.
+                Shape:
+                    (63,)
+
+        Output:
+            prediction:
+                Predicted class name.
+
+            confidence:
+                Probability of prediction.
+
+                Range:
+                    0.0 - 1.0
         """
 
+        # Validate type.
         if not isinstance(features, np.ndarray):
             raise TypeError("features must be a NumPy ndarray.")
 
+        # Validate shape.
         if features.ndim != 1:
             raise ValueError("features must have shape (63,).")
 
-        prediction = self._model.predict(features.reshape(1, -1))
+        # sklearn expects:
+        # (samples, features)
 
-        return str(prediction[0])
+        features = features.reshape(1, -1)
+
+        # Prediction.
+        prediction = self._model.predict(features)[0]
+
+        # Confidence.
+        probabilities = self._model.predict_proba(features)[0]
+
+        confidence = float(np.max(probabilities))
+
+        return (str(prediction),confidence)

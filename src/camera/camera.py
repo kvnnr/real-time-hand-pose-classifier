@@ -63,6 +63,19 @@ class Camera:
         #Check if camera is opened 
         if not self.cap.isOpened():
             raise RuntimeError(f"Error: Could not open the camera stream at index {camera_indx}.")
+       
+        #-----------------------------------------
+        # Camera resolution.
+        #
+        # Why:
+        #     Larger frame gives more canvas space
+        #     for UI rendering.
+        #-----------------------------------------
+
+        self.cap.set( cv.CAP_PROP_FRAME_WIDTH,1280)
+
+        self.cap.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
+
         print("\nCamera successfully initialized.")
         
         return self.cap

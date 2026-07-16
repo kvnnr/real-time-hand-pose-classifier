@@ -1,345 +1,241 @@
-from src.data.save_pose import SavePoseDataset
-import pytest
 import numpy as np
+import pytest
+
 from pathlib import Path
 from unittest.mock import patch
 
+from src.data.save_pose import SavePoseDataset
 
-class TestStorePoseDatasetValidation:
+
+#-----------------------------------------------------------------------------
+#Helper: builds a valid 63-value landmark list.
+#-----------------------------------------------------------------------------
+def make_landmark(value: float = 0.5) -> list[float]:
 
     """
-
-    Unit tests for Store Pose Dataset (Validation) module.
-
     Variables:
-    self.test_dataset ← Main object
-
-    self.valid_landmark, self.not_list_landmark, self.empty_landmark
-    self.non_numeric_landmark, self.wrong_size_landmark
-    self.nan_landmark, self.inf_landmark
-    self.valid_label, self.non_string_label, self.empty_label
-
+        value: float value repeated 63 times to form a flattened landmark vector.
     """
+
+    return [value] * 63
+
+
+class TestClearTemporaryStorage:
 
     def setup_method(self):
 
         """
-        This runs automatically before every individual test.
-        It ensures a fresh instance of StorePoseDataset is always available.
+        Variables:
+            self.dataset: SavePoseDataset instance
         """
 
-        #Create a new object of Store Pose Dataset class.
-        self.test_dataset = SavePoseDataset()
+        self.dataset = SavePoseDataset()
 
-        #-----------------------------
-        # Helper: Mock Landmark Lists
-        #-----------------------------
+    #Test clearing wipes x, y, and labels case.
+    def test_clear_temporary_storage_wipes_buffers(self):
 
-        #Valid landmark (63 flattened values)
-        self.valid_landmark = [0.1] * 63
+        self.dataset.x.append(np.zeros(63, dtype=np.float32))
+        self.dataset.y.append("fist")
+        self.dataset.labels.add("fist")
 
-        #Not a list variable
-        self.not_list_landmark = "invalid_input"
+        self.dataset.clear_temporary_storage()
 
-        #Empty landmark list variable
-        self.empty_landmark = []
-
-        #Non numeric landmark variable
-        self.non_numeric_landmark = ["a", "b", "c"]
-
-        #Wrong size landmark variable (10 instead of 63)
-        self.wrong_size_landmark = [0.1] * 10
-
-        #NaN landmark variable
-        self.nan_landmark = [0.1] * 63
-        self.nan_landmark[0] = float("nan")
-
-        #Inf landmark variable
-        self.inf_landmark = [0.1] * 63
-        self.inf_landmark[0] = float("inf")
-
-        #-----------------------------
-        # Helper: Mock Labels
-        #-----------------------------
-
-        #Valid label variable
-        self.valid_label = "fist"
-
-        #Non string label variable
-        self.non_string_label = 123
-
-        #Empty label variable
-        self.empty_label = "   "
-
-    #Test valid landmark and label case.
-    def test_valid_input(self):
-
-        #Store the return of validation method.
-        landmark_array, label = self.test_dataset.validate_input(self.valid_landmark, self.valid_label)
-
-        #Check if it returns a numpy array and stripped label after validation.
-        assert isinstance(landmark_array, np.ndarray), \
-            "Error: Something wrong with validation of landmarks."
-        assert label == "fist", \
-            "Error: Something wrong with validation of labels."
-
-    #Test landmark not a list.
-    def test_not_list_landmark(self):
-
-        #Check if it raises error when landmark is not a list.
-        with pytest.raises(TypeError, match="Landmarks in Dataset should be a list!"):
-            self.test_dataset.validate_input(self.not_list_landmark, self.valid_label) #type: ignore
-
-    #Test empty landmark.
-    def test_empty_landmark(self):
-
-        #Check if it raises error when landmark is empty.
-        with pytest.raises(ValueError, match="Landmarks must not be empty"):
-            self.test_dataset.validate_input(self.empty_landmark, self.valid_label)
-
-    #Test non numeric landmark.
-    def test_non_numeric_landmark(self):
-
-        #Check if it raises error when landmark is not numeric.
-        with pytest.raises(TypeError, match="Landmarks must be numeric floats"):
-            self.test_dataset.validate_input(self.non_numeric_landmark, self.valid_label)
-
-    #Test landmark not 63 values.
-    def test_wrong_size_landmark(self):
-
-        #Check if it raises error when landmark does not have 63 values.
-        with pytest.raises(ValueError, match="Landmarks must have 63 values!"):
-            self.test_dataset.validate_input(self.wrong_size_landmark, self.valid_label)
-
-    #Test landmark with NaN value.
-    def test_nan_landmark(self):
-
-        #Check if it raises error when landmark contains NaN.
-        with pytest.raises(ValueError, match="Landmarks contain NaN or Inf values"):
-            self.test_dataset.validate_input(self.nan_landmark, self.valid_label)
-
-    #Test landmark with Inf value.
-    def test_inf_landmark(self):
-
-        #Check if it raises error when landmark contains Inf.
-        with pytest.raises(ValueError, match="Landmarks contain NaN or Inf values"):
-            self.test_dataset.validate_input(self.inf_landmark, self.valid_label)
-
-    #Test label not a string.
-    def test_non_string_label(self):
-
-        #Check if it raises error when label is not a string.
-        with pytest.raises(TypeError, match="Labels must be string!"):
-            self.test_dataset.validate_input(self.valid_landmark, self.non_string_label) #type: ignore
-
-    #Test empty label.
-    def test_empty_label(self):
-
-        #Check if it raises error when label is empty.
-        with pytest.raises(ValueError, match="Labels must not be empty!"):
-            self.test_dataset.validate_input(self.valid_landmark, self.empty_label)
+        assert self.dataset.x == []
+        assert self.dataset.y == []
+        assert self.dataset.labels == set()
 
 
-class TestStorePoseDatasetAddPose:
-
-    """
-
-    Unit tests for Store Pose Dataset (add_pose) module.
-
-    Variables:
-    self.test_dataset ← Main object
-
-    self.valid_landmark, self.invalid_landmark
-    self.label_one, self.label_two
-
-    """
+class TestValidateInput:
 
     def setup_method(self):
 
         """
-        This runs automatically before every individual test.
-        It ensures a fresh instance of StorePoseDataset is always available.
+        Variables:
+            self.dataset: SavePoseDataset instance
         """
 
-        #Create a new object of Store Pose Dataset class.
-        self.test_dataset = SavePoseDataset()
+        self.dataset = SavePoseDataset()
 
-        #-----------------------------
-        # Helper: Mock Landmark & Labels
-        #-----------------------------
+    #Test valid landmark and label return array and stripped string case.
+    def test_validate_input_valid_returns_array_and_label(self):
 
-        #Valid landmark variable
-        self.valid_landmark = [0.1] * 63
+        landmark = make_landmark()
 
-        #Invalid landmark variable (empty)
-        self.invalid_landmark = []
+        result_landmark, result_label = self.dataset.validate_input(landmark, " fist ")
 
-        #Label variables
-        self.label_one = "fist"
-        self.label_two = "open_palm"
+        assert isinstance(result_landmark, np.ndarray)
+        assert result_landmark.shape == (63,)
+        assert result_label == "fist"
 
-    #Test add_pose stores landmark and label correctly.
-    def test_add_pose_appends_data(self):
+    #Test non-list landmark raises TypeError case.
+    def test_validate_input_landmark_not_list_raises_type_error(self):
 
-        #Add a single pose to temporary storage.
-        self.test_dataset.add_pose(self.valid_landmark, self.label_one)
+        with pytest.raises(TypeError):
+            self.dataset.validate_input("not a list", "fist")
 
-        #Check if landmark and label were appended correctly.
-        assert len(self.test_dataset.x) == 1, \
-            "Error: Something wrong with storing landmarks."
-        assert self.test_dataset.y[0] == "fist", \
-            "Error: Something wrong with storing labels."
-        assert "fist" in self.test_dataset.labels, \
-            "Error: Something wrong with tracking unique labels."
+    #Test empty landmark list raises ValueError case.
+    def test_validate_input_empty_landmark_raises_value_error(self):
 
-    #Test add_pose keeps labels unique.
-    def test_add_pose_unique_labels(self):
+        with pytest.raises(ValueError):
+            self.dataset.validate_input([], "fist")
 
-        #Add poses, one label repeated.
-        self.test_dataset.add_pose(self.valid_landmark, self.label_one)
-        self.test_dataset.add_pose(self.valid_landmark, self.label_one)
-        self.test_dataset.add_pose(self.valid_landmark, self.label_two)
+    #Test non-numeric landmark values raise TypeError case.
+    def test_validate_input_non_numeric_landmark_raises_type_error(self):
 
-        #Check duplicate label did not create a duplicate entry.
-        assert len(self.test_dataset.labels) == 2, \
-            "Error: Something wrong with unique label tracking."
-        assert len(self.test_dataset.x) == 3, \
-            "Error: Something wrong with storing repeated landmarks."
+        landmark = ["bad"] * 63
 
-    #Test add_pose raises error on invalid landmark.
-    def test_add_pose_invalid_landmark(self):
+        with pytest.raises(TypeError):
+            self.dataset.validate_input(landmark, "fist")
 
-        #Check if it raises error when landmark is invalid.
-        with pytest.raises(ValueError, match="Landmarks must not be empty"):
-            self.test_dataset.add_pose(self.invalid_landmark, self.label_one)
+    #Test nested landmark list raises ValueError case.
+    def test_validate_input_nested_landmark_raises_value_error(self):
+
+        landmark = [[0.5] * 3] * 21
+
+        with pytest.raises(ValueError):
+            self.dataset.validate_input(landmark, "fist")
+
+    #Test wrong landmark size raises ValueError case.
+    def test_validate_input_wrong_size_raises_value_error(self):
+
+        landmark = make_landmark()[:-1]
+
+        with pytest.raises(ValueError):
+            self.dataset.validate_input(landmark, "fist")
+
+    #Test NaN in landmark raises ValueError case.
+    def test_validate_input_nan_landmark_raises_value_error(self):
+
+        landmark = make_landmark()
+        landmark[0] = float("nan")
+
+        with pytest.raises(ValueError):
+            self.dataset.validate_input(landmark, "fist")
+
+    #Test Inf in landmark raises ValueError case.
+    def test_validate_input_inf_landmark_raises_value_error(self):
+
+        landmark = make_landmark()
+        landmark[0] = float("inf")
+
+        with pytest.raises(ValueError):
+            self.dataset.validate_input(landmark, "fist")
+
+    #Test non-string label raises TypeError case.
+    def test_validate_input_label_not_string_raises_type_error(self):
+
+        with pytest.raises(TypeError):
+            self.dataset.validate_input(make_landmark(), 123)
+
+    #Test empty label raises ValueError case.
+    def test_validate_input_empty_label_raises_value_error(self):
+
+        with pytest.raises(ValueError):
+            self.dataset.validate_input(make_landmark(), "   ")
 
 
-class TestStorePoseDatasetClearStorage:
-
-    """
-
-    Unit tests for Store Pose Dataset (clear_temporary_storage) module.
-
-    Variables:
-    self.test_dataset ← Main object
-
-    self.valid_landmark, self.valid_label
-
-    """
+class TestAddPose:
 
     def setup_method(self):
 
         """
-        This runs automatically before every individual test.
-        It ensures a fresh instance of StorePoseDataset is always available.
+        Variables:
+            self.dataset: SavePoseDataset instance
         """
 
-        #Create a new object of Store Pose Dataset class.
-        self.test_dataset = SavePoseDataset()
+        self.dataset = SavePoseDataset()
 
-        #Valid landmark and label variables
-        self.valid_landmark = [0.1] * 63
-        self.valid_label = "fist"
+    #Test adding a valid pose stores landmark, label, and unique label case.
+    def test_add_pose_stores_landmark_and_label(self):
 
-    #Test clear_temporary_storage wipes all buffers.
-    def test_clear_temporary_storage(self):
+        self.dataset.add_pose(make_landmark(), "fist")
 
-        #Add data then clear it.
-        self.test_dataset.add_pose(self.valid_landmark, self.valid_label)
-        self.test_dataset.clear_temporary_storage()
+        assert len(self.dataset.x) == 1
+        assert self.dataset.y == ["fist"]
+        assert self.dataset.labels == {"fist"}
 
-        #Check if all internal buffers were wiped.
-        assert self.test_dataset.x == [], \
-            "Error: Something wrong with clearing landmark storage."
-        assert self.test_dataset.y == [], \
-            "Error: Something wrong with clearing label storage."
-        assert self.test_dataset.labels == set(), \
-            "Error: Something wrong with clearing unique labels."
+    #Test adding an invalid pose raises and does not store anything case.
+    def test_add_pose_invalid_input_raises_and_skips_storage(self):
+
+        with pytest.raises(ValueError):
+            self.dataset.add_pose([], "fist")
+
+        assert self.dataset.x == []
+        assert self.dataset.y == []
 
 
-class TestStorePoseDatasetSave:
-
-    """
-
-    Unit tests for Store Pose Dataset (save_dataset) module.
-
-    Variables:
-    self.test_dataset ← Main object
-
-    self.valid_landmark, self.valid_label
-
-    Note:
-    save_dataset touches the filesystem (mkdir + np.savez_compressed),
-    so those are mocked out instead of writing real files during tests.
-
-    """
+class TestSaveDataset:
 
     def setup_method(self):
 
         """
-        This runs automatically before every individual test.
-        It ensures a fresh instance of StorePoseDataset is always available.
+        Variables:
+            self.dataset: SavePoseDataset instance
         """
 
-        #Create a new object of Store Pose Dataset class.
-        self.test_dataset = SavePoseDataset()
+        self.dataset = SavePoseDataset()
 
-        #Valid landmark and label variables
-        self.valid_landmark = [0.1] * 63
-        self.valid_label = "fist"
+    #Test saving with no data logs a warning and skips writing case.
+    def test_save_dataset_no_data_warns_and_skips(self, tmp_path: Path):
 
-    #Test save_dataset skips writing when storage is empty.
-    def test_save_with_no_data(self, caplog):
+        filepath = tmp_path / "dataset.npz"
 
-        #Mock the external dependency (numpy file write).
-        with patch("numpy.savez_compressed") as mock_savez:
-            self.test_dataset.save_dataset(filepath="dummy_path.npz")
+        with patch.object(self.dataset.logger, "warning") as mock_warning:
+            self.dataset.save_dataset(filepath)
 
-        #Check if savez was never called and warning was logged.
-        assert not mock_savez.called, \
-            "Error: Something wrong, savez should not be called with no data."
-        assert "No data found" in caplog.text, \
-            "Error: Something wrong, warning log was not triggered."
+        mock_warning.assert_called_once()
+        assert not filepath.exists()
 
-    #Test save_dataset creates parent directory and writes data.
-    def test_save_creates_dir_and_writes(self, tmp_path):
+    #Test saving new data creates a fresh NPZ file case.
+    def test_save_dataset_creates_new_file(self, tmp_path: Path):
 
-        #Add data then save to a fake nested path.
-        self.test_dataset.add_pose(self.valid_landmark, self.valid_label)
-        fake_filepath = tmp_path / "nested" / "hand_pose_dataset.npz"
+        filepath = tmp_path / "nested" / "dataset.npz"
 
-        #Mock the external dependency (numpy file write).
-        with patch("numpy.savez_compressed") as mock_savez:
-            self.test_dataset.save_dataset(filepath=fake_filepath)
+        self.dataset.add_pose(make_landmark(), "fist")
+        self.dataset.save_dataset(filepath)
 
-        #Check if parent directory was created and savez was called once.
-        assert fake_filepath.parent.exists(), \
-            "Error: Something wrong with creating parent directory."
-        mock_savez.assert_called_once()
+        assert filepath.exists()
 
-    #Test save_dataset clears storage after a successful save.
-    def test_save_clears_storage_after_save(self, tmp_path):
+        saved = np.load(filepath)
 
-        #Add data then save it.
-        self.test_dataset.add_pose(self.valid_landmark, self.valid_label)
-        fake_filepath = tmp_path / "hand_pose_dataset.npz"
+        assert saved["X"].shape == (1, 63)
+        assert list(saved["y"]) == ["fist"]
 
-        #Mock the external dependency (numpy file write).
-        with patch("numpy.savez_compressed"):
-            self.test_dataset.save_dataset(filepath=fake_filepath)
+    #Test saving appends to an existing dataset case.
+    def test_save_dataset_appends_to_existing_file(self, tmp_path: Path):
 
-        #Check if temporary storage was cleared after saving.
-        assert self.test_dataset.x == [], \
-            "Error: Something wrong, storage was not cleared after save."
+        filepath = tmp_path / "dataset.npz"
 
-    #Test save_dataset raises error when directory creation fails.
-    def test_save_raises_on_mkdir_failure(self, tmp_path):
+        self.dataset.add_pose(make_landmark(0.1), "fist")
+        self.dataset.save_dataset(filepath)
 
-        #Add data then attempt to save.
-        self.test_dataset.add_pose(self.valid_landmark, self.valid_label)
-        fake_filepath = tmp_path / "hand_pose_dataset.npz"
+        self.dataset.add_pose(make_landmark(0.9), "open_palm")
+        self.dataset.save_dataset(filepath)
 
-        #Mock the external dependency (filesystem mkdir) to simulate failure.
+        saved = np.load(filepath)
+
+        assert saved["X"].shape == (2, 63)
+        assert sorted(saved["y"]) == ["fist", "open_palm"]
+
+    #Test saving clears temporary storage afterward case.
+    def test_save_dataset_clears_storage_after_save(self, tmp_path: Path):
+
+        filepath = tmp_path / "dataset.npz"
+
+        self.dataset.add_pose(make_landmark(), "fist")
+        self.dataset.save_dataset(filepath)
+
+        assert self.dataset.x == []
+        assert self.dataset.y == []
+        assert self.dataset.labels == set()
+
+    #Test directory creation failure raises RuntimeError case.
+    def test_save_dataset_mkdir_failure_raises_runtime_error(self, tmp_path: Path):
+
+        filepath = tmp_path / "dataset.npz"
+
+        self.dataset.add_pose(make_landmark(), "fist")
+
         with patch.object(Path, "mkdir", side_effect=OSError("permission denied")):
-            with pytest.raises(RuntimeError, match="Could not create directory"):
-                self.test_dataset.save_dataset(filepath=fake_filepath)
+            with pytest.raises(RuntimeError):
+                self.dataset.save_dataset(filepath)

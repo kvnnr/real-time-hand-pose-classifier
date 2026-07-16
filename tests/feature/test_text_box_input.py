@@ -1,74 +1,85 @@
+import pytest
+
 from src.feature.textbox.text_box_input import TextBoxInput
+
 
 class TestUpdateTextInput:
 
-    """
-    Unit tests for KeyboardOps.update_text_input().
-
-    Tests:
-    - Backspace removes the last character.
-    - Reserved keys are ignored.
-    - Printable characters are appended.s
-    """
-
-    """
-    Variables:
-        kb_op -> object
-
-        self.text
-        self.subtracted_text
-        self.tab_key
-        self.esc_key
-        self.empty_text
-        self.backspace_key
-        self.letter_t_key
-    """
     def setup_method(self):
 
-        #Object creation,
-        self.kb_op = TextBoxInput()
-        
-        #Sample Inputs.
-        self.text = 'Test'
-        self.subtracted_text = "Tes"
-        self.tab_key = 9
-        self.esc_key = 27
-        self.empty_text = ""
-        self.backspace_key = 8
-        self.letter_t_key = 116 
+        """
+        Variables:
+            self.box: TextBoxInput instance
+        """
 
-    #Check the backspace key in text box.
-    def test_remove_text_on_backspace_key(self):
-        
-        #Test if backspace works in the text operation.
-        text = self.kb_op.update_text_input(self.backspace_key, self.text)
-        assert text == self.subtracted_text, \
-            "Error: Backspace in text box is not working."
+        self.box = TextBoxInput()
 
-    # ESC and TAB should NOT modify text (ignored inputs) 
-    def test_ignore_esc_n_tab_key(self):
-        
-        #Test if it ignore the esc key.
-        text_1 = self.kb_op.update_text_input(self.esc_key, self.text)
-        assert text_1 == self.text, \
-            "Error: ESC should not modify text."
-        
-        #Test if it ignore the tab key.
-        text_2 = self.kb_op.update_text_input(self.tab_key, self.text)
-        assert text_2 == self.text, \
-            "Error: TAB should not modify text."
-    
-    #Check for happy path.
-    def test_accept_valid_input(self):
+    #Test backspace removes the last character case.
+    def test_update_text_input_backspace_removes_last_character(self):
 
-        #Test accept the valid inputs.
-        text = self.kb_op.update_text_input(self.letter_t_key, self.empty_text)
-        assert text == "t", \
-            "Error: Valid key input was not appended correctly."
-    
-    # Edge case: backspace on empty string should not crash
-    def test_backspace_on_empty_string(self):
+        result = self.box.update_text_input(8, "fist")
 
-        text = self.kb_op.update_text_input(self.backspace_key,self.empty_text)
-        assert text == "", \
-            "Error: Backspace on empty string should return empty string."
+        assert result == "fis"
+
+    #Test backspace on empty text returns empty text case.
+    def test_update_text_input_backspace_on_empty_text_returns_empty(self):
+
+        result = self.box.update_text_input(8, "")
+
+        assert result == ""
+
+    #Test printable ASCII key appends its character case.
+    def test_update_text_input_printable_key_appends_character(self):
+
+        result = self.box.update_text_input(ord("a"), "fis")
+
+        assert result == "fisa"
+
+    #Test lower boundary printable key (space) appends its character case.
+    def test_update_text_input_space_key_appends_character(self):
+
+        result = self.box.update_text_input(32, "fist")
+
+        assert result == "fist "
+
+    #Test upper boundary printable key (~) appends its character case.
+    def test_update_text_input_tilde_key_appends_character(self):
+
+        result = self.box.update_text_input(126, "fist")
+
+        assert result == "fist~"
+
+    #Test key below the printable range is ignored case.
+    def test_update_text_input_below_printable_range_ignored(self):
+
+        result = self.box.update_text_input(31, "fist")
+
+        assert result == "fist"
+
+    #Test key above the printable range is ignored case.
+    def test_update_text_input_above_printable_range_ignored(self):
+
+        result = self.box.update_text_input(127, "fist")
+
+        assert result == "fist"
+
+    #Test Tab key does not modify the text case.
+    def test_update_text_input_tab_key_ignored(self):
+
+        result = self.box.update_text_input(9, "fist")
+
+        assert result == "fist"
+
+    #Test Escape key does not modify the text case.
+    def test_update_text_input_esc_key_ignored(self):
+
+        result = self.box.update_text_input(27, "fist")
+
+        assert result == "fist"
+
+    #Test appending onto empty text case.
+    def test_update_text_input_appends_to_empty_text(self):
+
+        result = self.box.update_text_input(ord("f"), "")
+
+        assert result == "f"

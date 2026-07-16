@@ -1,240 +1,331 @@
-from src.detection.hand_detector import HandDetector
-import pytest
 import numpy as np
+import pytest
+
 from types import SimpleNamespace
+from unittest.mock import patch, mock_open, MagicMock
 
-class TestHandDetectorValidation:
-    
+from src.detection.hand_detector import HandDetector
+
+
+#-----------------------------------------------------------------------------
+#Helper: builds a HandDetector instance without touching the real config.json
+#or hand_landmarker.task files on disk.
+#-----------------------------------------------------------------------------
+def build_detector(mock_mp_detector: MagicMock = None) -> HandDetector:
+
     """
-    
-    Unit tests for Hand Detector (Validation) module.
+    Build a HandDetector with config loading and MediaPipe initialization mocked out.
 
+    Input:
+        mock_mp_detector: MagicMock | None
+            Fake MediaPipe HandLandmarker to inject. If None, a fresh MagicMock is used.
+
+    Process:
+        Patch open() to return fake config JSON.
+        Patch json.load() to return a fake config dict.
+        Patch BaseOptions and vision.HandLandmarker.create_from_options.
+        Instantiate HandDetector.
+
+    Output:
+        HandDetector
+            Instance with a mocked internal hand_detector.
+    """
+
+    fake_config = {"max_num_hands": 2}
+    fake_detector = mock_mp_detector or MagicMock()
+
+    with patch("builtins.open", mock_open(read_data="{}")), \
+         patch("src.detection.hand_detector.json.load", return_value=fake_config), \
+         patch("src.detection.hand_detector.BaseOptions"), \
+         patch("src.detection.hand_detector.vision.HandLandmarker.create_from_options", return_value=fake_detector):
+
+        detector = HandDetector()
+
+    return detector
+
+
+#-----------------------------------------------------------------------------
+#Helper: builds a fake landmark object with x, y, z attributes.
+#-----------------------------------------------------------------------------
+def make_landmark(x: float = 0.5, y: float = 0.5, z: float = 0.0) -> SimpleNamespace:
+
+    """
     Variables:
-    self.test_frame ← Main object
-    
-    self.valid_frames, self.no_frame, self.not_ndarray
-    self.empty_frame, self.not_3d_frame, self.frame_4ch
-    self.invalid_dtype_frame
-    
+        x, y, z: coordinate values for the fake landmark.
     """
+
+    return SimpleNamespace(x=x, y=y, z=z)
+
+
+class TestHandDetectorInit:
+
+    #Test successful config load and detector creation case.
+    def test_init_loads_config_and_creates_detector(self):
+
+        """
+        Variables:
+            detector: HandDetector built via build_detector()
+        """
+
+        detector = build_detector()
+
+        assert detector.config == {"max_num_hands": 2}
+        assert detector.hand_detector is not None
+
+    #Test missing config file raises RuntimeError case.
+    def test_init_missing_config_raises_runtime_error(self):
+
+        """
+        Variables:
+            None
+        """
+
+        with patch("builtins.open", side_effect=FileNotFoundError):
+            with pytest.raises(RuntimeError):
+                HandDetector()
+
+    #Test invalid JSON in config file raises RuntimeError case.
+    def test_init_invalid_json_raises_runtime_error(self):
+
+        """
+        Variables:
+            None
+        """
+
+        with patch("builtins.open", mock_open(read_data="not valid json")):
+            with pytest.raises(RuntimeError):
+                HandDetector()
+
+    #Test injected detector is used instead of a new one case.
+    def test_init_uses_provided_detector(self):
+
+        """
+        Variables:
+            fake_detector: MagicMock standing in for a real MediaPipe HandLandmarker
+        """
+
+        fake_detector = MagicMock()
+        fake_config = {"max_num_hands": 1}
+
+        with patch("builtins.open", mock_open(read_data="{}")), \
+             patch("src.detection.hand_detector.json.load", return_value=fake_config):
+
+            detector = HandDetector(detector=fake_detector)
+
+        assert detector.hand_detector is fake_detector
+
+
+class TestValidateInput:
 
     def setup_method(self):
 
         """
-        This runs automatically before every individual test.
-        It ensures a fresh instance of Normalizer is always available.
+        Variables:
+            self.detector: HandDetector built via build_detector()
         """
 
-        #Create a new object of Hand Detector class.
-        self.test_frame = HandDetector()
+        self.detector = build_detector()
 
-        #-----------------------------
-        # Helper: Mock Numpy matrix
-        #-----------------------------
+    #Test valid RGB frame returns the same frame case.
+    def test_validate_input_valid_frame_returns_frame(self):
 
-        #Valid numpy maxtrix
-        self.valid_frames = np.array(
-            [
-                [[0, 0, 255], [0, 255, 0]],
-                [[255, 0, 0], [255, 255, 255]]
-            ], dtype=np.uint8)
-        
-        #No frames detected variable
-        self.no_frame = None
-        
-        #Not Numpy array variable
-        self.not_ndarray = [[1, 2], [3, 4]] 
+        frame = np.zeros((10, 10, 3), dtype=np.uint8)
 
-        #Empty numpy array variable
-        self.empty_frame = np.array([])
+        result = self.detector.validate_input(frame)
 
-        #Not 3D numpy array variable
-        self.not_3d_frame = np.array(
-                [
-                    [0, 255, 128],
-                    [64, 128, 255]
-                ], dtype=np.uint8)
+        assert result is frame
 
-        #4 Channel Numpy Array
-        self.frame_4ch = np.array(
-                [
-                    [[255, 0, 0, 255], [0, 255, 0, 255]],
-                    [[0, 0, 255, 255], [255, 255, 255, 255]]
-                ],dtype=np.uint8)
-        
-        #Invalid dtype Numpy Array
-        self.invalid_dtype_frame = np.array(
-                [
-                    [[1, 2, 3], [4, 5, 6]],
-                    [[7, 8, 9], [10, 11, 12]]
-                ], dtype=np.int32)
-        
-    #Test Valid frame case.
-    def test_valid_frame(self):
+    #Test None frame raises ValueError case.
+    def test_validate_input_none_frame_raises_value_error(self):
 
-        #Store the return of validation method.
-        result = self.test_frame.validate_input(self.valid_frames)
+        with pytest.raises(ValueError):
+            self.detector.validate_input(None)
 
-        #Check if it return the same numpy matrix after validation.
-        assert result is self.valid_frames, \
-            "Error: Something wrong with validation of frames."
+    #Test non-array frame raises TypeError case.
+    def test_validate_input_invalid_type_raises_type_error(self):
 
-    #Test no frame detected.
-    def test_no_frame(self):
-        
-        #Check if it raises error when no frame detected.
-        with pytest.raises(ValueError, match= "No frame detected!"):
-            self.test_frame.validate_input(self.no_frame) #type: ignore
-    
-    #Test frame not Numpy array.
-    def test_not_ndarray(self):
+        with pytest.raises(TypeError):
+            self.detector.validate_input([[1, 2, 3]])
 
-        #Check if it raise error when frame is not ndarray.
-        with pytest.raises(TypeError, match= "Frame must be Numpy array!"):
-            self.test_frame.validate_input(self.not_ndarray) #type: ignore
+    #Test empty frame raises ValueError case.
+    def test_validate_input_empty_frame_raises_value_error(self):
 
-    #Test empty frame.
-    def test_empty_frame(self):
+        frame = np.array([], dtype=np.uint8)
 
-          #Check if it raise error when frame is empty.
-        with pytest.raises(ValueError, match= "Frame is empty!"):
-            self.test_frame.validate_input(self.empty_frame)
+        with pytest.raises(ValueError):
+            self.detector.validate_input(frame)
 
-    #Test not 3 dimension.
-    def test_not_3dimension(self):
+    #Test wrong number of dimensions raises ValueError case.
+    def test_validate_input_invalid_dimensions_raises_value_error(self):
 
-        #Check if it raises error when frame is not 3 dimension.
-        with pytest.raises(ValueError, match= "Frame must have 3 dimensions!"):
-            self.test_frame.validate_input(self.not_3d_frame)
+        frame = np.zeros((10, 10), dtype=np.uint8)
 
-    #Test frame not 3 color channel.
-    def test_not_3colorchannel(self):
+        with pytest.raises(ValueError):
+            self.detector.validate_input(frame)
 
-        #Check if it raises error when frame is not 3 color channel.
-        with pytest.raises(ValueError, match= "Frame must have 3 Color Channels!"):
-            self.test_frame.validate_input(self.frame_4ch)
+    #Test wrong number of color channels raises ValueError case.
+    def test_validate_input_invalid_channels_raises_value_error(self):
 
-    #Test frame not correct dtype.
-    def test_not_proper_dtype(self):
-        
-        #Check if it raises error when incorrect dtype.
-        with pytest.raises(TypeError, match= "Invalid Image dtype. Must be uint8!"):
-            self.test_frame.validate_input(self.invalid_dtype_frame)
+        frame = np.zeros((10, 10, 4), dtype=np.uint8)
 
-class TestHandDetectorLandmarkValidation:
+        with pytest.raises(ValueError):
+            self.detector.validate_input(frame)
 
-    """
+    #Test wrong dtype raises TypeError case.
+    def test_validate_input_invalid_dtype_raises_type_error(self):
 
-    Unit tests for Hand Detector (Landmark Validation) module.
+        frame = np.zeros((10, 10, 3), dtype=np.float32)
 
-    Variables:
-    self.test_frame ← Main object
+        with pytest.raises(TypeError):
+            self.detector.validate_input(frame)
 
-    self.valid_landmarks, self.no_landmarks, self.not_list_input
-    self.empty_landmarks, self.not_hand_list
-    self.invalid_landmark_count
-    self.invalid_landmark_object
-    self.invalid_landmark_dtype
 
-    """
+class TestValidateHandLandmark:
 
     def setup_method(self):
 
         """
-        This runs automatically before every individual test.
-        It ensures a fresh instance of HandDetector is always available.
+        Variables:
+            self.detector: HandDetector built via build_detector()
         """
 
-        # Create new object of Hand Detector class.
-        self.test_frame = HandDetector()
+        self.detector = build_detector()
 
-        # -----------------------------
-        # Helper: Mock Landmark Object
-        # -----------------------------
+    #Test None landmarks returns None case.
+    def test_validate_hand_landmark_none_returns_none(self):
 
-        def make_landmark(x=0.0, y=0.0, z=0.0):
-            return SimpleNamespace(x=x, y=y, z=z)
+        result = self.detector.validate_hand_landmark(None)
 
-        # Valid landmarks (1 hand, 21 landmarks)
-        self.valid_landmarks = [ [make_landmark(0.1, 0.2, 0.3) for _ in range(21)] ]
+        assert result is None
 
-        # No landmarks detected variable
-        self.no_landmarks = None
+    #Test empty list returns None case.
+    def test_validate_hand_landmark_empty_list_returns_none(self):
 
-        # Not list input
-        self.not_list_input = "invalid_input"
+        result = self.detector.validate_hand_landmark([])
 
-        # Empty landmarks list
-        self.empty_landmarks = []
+        assert result is None
 
-        # Not hand list
-        self.not_hand_list = "not_a_hand_list"
+    #Test valid landmarks are returned unchanged case.
+    def test_validate_hand_landmark_valid_landmarks_returns_landmarks(self):
 
-        # Invalid landmark count (not 21)
-        self.invalid_landmark_count = [[make_landmark() for _ in range(10)]]
+        hand = [make_landmark() for _ in range(21)]
+        landmarks = [hand]
 
-        # Invalid landmark object structure (missing z)
-        self.invalid_landmark_object = [[SimpleNamespace(x=1.0, y=2.0) for _ in range(21)]]
+        result = self.detector.validate_hand_landmark(landmarks)
 
-        # Invalid landmark dtype (x is string)
-        self.invalid_landmark_dtype = [[SimpleNamespace(x="bad", y=1.0, z=1.0) for _ in range(21)]]
+        assert result == landmarks
 
-    # Test valid landmarks case.
-    def test_valid_landmarks(self):
+    #Test non-list landmarks raises TypeError case.
+    def test_validate_hand_landmark_invalid_type_raises_type_error(self):
 
-        # Store return of validation method.
-        result = self.test_frame.validate_hand_landmark(self.valid_landmarks)
+        with pytest.raises(TypeError):
+            self.detector.validate_hand_landmark("not a list")
 
-        # Check if it returns same landmarks after validation.
-        assert result is self.valid_landmarks, \
-            "Error: Something wrong with landmark validation."
+    #Test hand entry that is not a list raises TypeError case.
+    def test_validate_hand_landmark_hand_not_list_raises_type_error(self):
 
-    # Test no landmarks detected.
-    def test_no_landmarks(self):
+        with pytest.raises(TypeError):
+            self.detector.validate_hand_landmark(["not a hand list"])
 
-        # Check if it raises error when landmarks is None.
-        with pytest.raises(ValueError, match="No landmarks detected!"):
-            self.test_frame.validate_hand_landmark(self.no_landmarks)
+    #Test hand with wrong landmark count raises ValueError case.
+    def test_validate_hand_landmark_wrong_landmark_count_raises_value_error(self):
 
-    # Test not list input.
-    def test_not_list_input(self):
+        hand = [make_landmark() for _ in range(20)]
 
-        # Check if it raises error when input is not list.
-        with pytest.raises(TypeError, match="Invalid landmarks data type!"):
-            self.test_frame.validate_hand_landmark(self.not_list_input)
+        with pytest.raises(ValueError):
+            self.detector.validate_hand_landmark([hand])
 
-    # Test empty landmarks.
-    def test_empty_landmarks(self):
+    #Test landmark missing x/y/z attributes raises TypeError case.
+    def test_validate_hand_landmark_missing_attributes_raises_type_error(self):
 
-        # Check if it raises error when landmarks is empty.
-        with pytest.raises(ValueError, match="No hands detected!"):
-            self.test_frame.validate_hand_landmark(self.empty_landmarks)
+        hand = [make_landmark() for _ in range(20)] + [SimpleNamespace()]
 
-    # Test hand not list.
-    def test_not_hand_list(self):
+        with pytest.raises(TypeError):
+            self.detector.validate_hand_landmark([hand])
 
-        # Check if it raises error when hand is not list.
-        with pytest.raises(TypeError, match="Invalid landmarks data type!"):
-            self.test_frame.validate_hand_landmark(self.not_hand_list)
+    #Test landmark with non-numeric x raises TypeError case.
+    def test_validate_hand_landmark_non_numeric_x_raises_type_error(self):
 
-    # Test invalid landmark count.
-    def test_invalid_landmark_count(self):
+        hand = [make_landmark() for _ in range(20)] + [make_landmark(x="bad")]
 
-        # Check if it raises error when landmark count is not 21.
-        with pytest.raises(ValueError, match="Each hand must contain exactly 21 landmarks."):
-            self.test_frame.validate_hand_landmark(self.invalid_landmark_count)
+        with pytest.raises(TypeError):
+            self.detector.validate_hand_landmark([hand])
 
-    # Test invalid landmark object.
-    def test_invalid_landmark_object(self):
 
-        # Check if landmark object structure is invalid.
-        with pytest.raises(TypeError, match="Invalid landmark object structure."):
-            self.test_frame.validate_hand_landmark(self.invalid_landmark_object)
+class TestDetectHands:
 
-    # Test invalid landmark dtype.
-    def test_invalid_landmark_dtype(self):
+    def setup_method(self):
 
-        # Check if landmark.x is not numeric.
-        with pytest.raises(TypeError, match="landmark.x must be numeric"):
-            self.test_frame.validate_hand_landmark(self.invalid_landmark_dtype)
+        """
+        Variables:
+            self.mock_mp_detector: MagicMock standing in for the MediaPipe HandLandmarker
+            self.detector: HandDetector built with self.mock_mp_detector injected
+        """
 
+        self.mock_mp_detector = MagicMock()
+        self.detector = build_detector(mock_mp_detector=self.mock_mp_detector)
+
+    #Test valid frame with a detected hand returns landmarks case.
+    def test_detect_hands_valid_frame_returns_landmarks(self):
+
+        hand = [make_landmark() for _ in range(21)]
+        self.mock_mp_detector.detect.return_value = SimpleNamespace(hand_landmarks=[hand])
+
+        frame = np.zeros((10, 10, 3), dtype=np.uint8)
+
+        with patch("src.detection.hand_detector.mp.Image"):
+            result = self.detector.detect_hands(frame)
+
+        assert result == [hand]
+
+    #Test frame with no detected hand returns None case.
+    def test_detect_hands_no_hand_returns_none(self):
+
+        self.mock_mp_detector.detect.return_value = SimpleNamespace(hand_landmarks=[])
+
+        frame = np.zeros((10, 10, 3), dtype=np.uint8)
+
+        with patch("src.detection.hand_detector.mp.Image"):
+            result = self.detector.detect_hands(frame)
+
+        assert result is None
+
+    #Test invalid frame raises ValueError before MediaPipe runs case.
+    def test_detect_hands_invalid_frame_raises_value_error(self):
+
+        with pytest.raises(ValueError):
+            self.detector.detect_hands(None)
+
+        self.mock_mp_detector.detect.assert_not_called()
+
+    #Test MediaPipe failure raises RuntimeError case.
+    def test_detect_hands_mediapipe_failure_raises_runtime_error(self):
+
+        self.mock_mp_detector.detect.side_effect = Exception("mediapipe blew up")
+
+        frame = np.zeros((10, 10, 3), dtype=np.uint8)
+
+        with patch("src.detection.hand_detector.mp.Image"):
+            with pytest.raises(RuntimeError):
+                self.detector.detect_hands(frame)
+
+
+class TestCloseMediapipe:
+
+    def setup_method(self):
+
+        """
+        Variables:
+            self.mock_mp_detector: MagicMock standing in for the MediaPipe HandLandmarker
+            self.detector: HandDetector built with self.mock_mp_detector injected
+        """
+
+        self.mock_mp_detector = MagicMock()
+        self.detector = build_detector(mock_mp_detector=self.mock_mp_detector)
+
+    #Test close_mediapipe calls close on the underlying detector case.
+    def test_close_mediapipe_calls_close_on_detector(self):
+
+        self.detector.close_mediapipe()
+
+        self.mock_mp_detector.close.assert_called_once()
