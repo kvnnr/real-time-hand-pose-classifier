@@ -1,6 +1,7 @@
 from __future__ import annotations
 import numpy as np
 import time
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from src.schemas.event_schema import VisionEvent
@@ -52,12 +53,10 @@ class VisionController:
     VisionController Contract
 
     What:
-
         Controls the complete real-time hand pose
         recognition application workflow.
 
     Why:
-
         Separates application execution logic
         from main.py.
 
@@ -73,7 +72,6 @@ class VisionController:
             Training Pipeline
 
     Input:
-
         Injected system dependencies.
 
         Includes:
@@ -89,7 +87,6 @@ class VisionController:
             Application state.
 
     Process:
-
         1. Capture camera frame.
 
         2. Convert image format.
@@ -107,7 +104,6 @@ class VisionController:
         8. Handle user events.
 
     Output:
-
         None.
 
         Runs the real-time application lifecycle.
@@ -132,6 +128,10 @@ class VisionController:
 
     """
 
+    # Root directory where pose datasets (folders + images) are stored.
+    # NOTE: adjust this if your project keeps the dataset root somewhere else
+    DATASET_ROOT = Path("data/raw")
+
     def __init__(
         self,
         cam: Camera,
@@ -152,73 +152,56 @@ class VisionController:
         ui_state: UiState
     ) -> None:
 
-
         """
         Initialize VisionController.
 
         Input:
-
             cam:
                 Camera capture module.
-
 
             view:
                 Frame display and keyboard handler.
 
-
             detector:
                 MediaPipe hand detection module.
-
 
             predictor:
                 Machine learning inference model.
 
-
             ui:
                 Application UI renderer.
-
 
             keyboard_ops:
                 Keyboard input processor.
 
-
             skeleton_drawer:
                 Draws hand landmark skeleton.
-
 
             extract_landmarks:
                 Extracts normalized landmark features.
 
-
             train:
                 Model training pipeline.
-
 
             save_pose_landmark:
                 Dataset landmark saving pipeline.
 
-
             filesystem:
                 Dataset folder manager.
-
 
             save_image:
                 Raw image saving module.
 
-
             metadata_manager:
                 Dataset metadata handler.
 
-
             vision_state:
                 Stores vision processing data.
-
 
             ui_state:
                 Stores UI related information.
 
         Output:
-
             None.
 
         """
@@ -430,7 +413,14 @@ class VisionController:
         self.detector.close_mediapipe()
         self.cam.release_camera()
         self.view.close_windows()
-    
+
+    def _pose_folder_path(self) -> Path:
+        """
+        Build the dataset folder path for the pose label currently
+        typed into the UI textbox.
+        """
+        return self.DATASET_ROOT / self.ui_state.pose_label
+
     def execute_event(self, event: VisionEvent, key: int) -> None:
         
         """
@@ -447,12 +437,42 @@ class VisionController:
         """
 
         if event == VisionEvent.CREATE_FOLDER:
-            print("Create folder event triggered")
-            # Existing code goes here.
+
+            label = self.ui_state.pose_label
+
+            if not label or not label.strip():
+                print("Cannot create folder: pose label is empty.")
+                return
+
+            folder_path = self._pose_folder_path()
+
+            # Creates the folder AND metadata.json (counter starts at 0).
+            self.filesystem.initiate_pose_dataset_folder(folder_path, label)
 
         elif event == VisionEvent.SAVE_POSE:
-            print("Save pose event triggered")
-            # Existing save logic here.
+
+            label = self.ui_state.pose_label
+
+            if not label or not label.strip():
+                print("Cannot save pose: pose label is empty.")
+                return
+
+            folder_path = self._pose_folder_path()
+
+            if not folder_path.exists():
+                print(f"Cannot save pose: {folder_path} does not exist. "
+                      f"Create the folder first.")
+                return
+
+            # Pull current counter, save the raw frame under it, then bump it.
+            counter = self.metadata_manager.get_metadata(folder_path, "counter")
+
+            self.save_image.save_image(folder_path, self.vision_state.frame, label, counter)
+
+            self.metadata_manager.update_metadata(folder_path, "counter", counter + 1)
+
+            # Also extract + persist the normalized landmark vector for training.
+            self.save_pose_landmark.extract_and_save_landmark(label, self.vision_state.rgb_frame)
 
         elif event == VisionEvent.TRAIN_MODEL:
             print("Training event triggered")
@@ -460,11 +480,7 @@ class VisionController:
             print(f"Accuracy: {self.vision_state.accuracy * 100:.2f}%")
 
         elif event == VisionEvent.TYPE_CHAR:
-            self.ui_state.pose_label = self.keyboard_ops.update_text_input(
-                key, self.ui_state.pose_label
-            )
+            self.ui_state.pose_label = self.keyboard_ops.update_text_input(key, self.ui_state.pose_label)
 
         elif event == VisionEvent.BACKSPACE:
-            self.ui_state.pose_label = self.keyboard_ops.update_text_input(
-                key, self.ui_state.pose_label
-            )
+            self.ui_state.pose_label = self.keyboard_ops.update_text_input(key, self.ui_state.pose_label)
