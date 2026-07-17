@@ -37,7 +37,7 @@ To improve maintainability and scalability, the project follows a modular pipeli
 Demo recorded using a low-end camera and limited hardware resources. Performance may vary depending on camera quality and system specifications.
 
 <p align="center">
-    <img src="assets/demo.gif" width="850">
+    <img src="assets/demo/demo.gif" width="850">
 </p>
 
 ---
@@ -103,7 +103,7 @@ The application is divided into independent layers that separate image acquisiti
 Each module communicates through clearly defined interfaces, reducing coupling and making the application easier to maintain, extend, and test.
 
 <p align="center">
-    <img src="assets/system_architecture.png" width="950" alt="System Architecture">
+    <img src="assets/diagram/system_architecture.png" width="950" alt="System Architecture">
 </p>
 
 ---
@@ -117,7 +117,7 @@ This design simplifies debugging, improves code readability, and allows individu
 > 📌 Replace this diagram with your finalized pipeline architecture image.
 
 <p align="center">
-    <img src="assets/software_pipeline.png" width="950" alt="Pipeline Architecture">
+    <img src="assets/diagram/software_pipeline.png" width="950" alt="Pipeline Architecture">
 </p>
 
 ---
@@ -129,7 +129,7 @@ The real-time inference pipeline describes the lifecycle of each camera frame du
 A captured frame is processed through multiple stages: image acquisition, hand landmark detection, coordinate normalization, feature extraction, model inference, confidence evaluation, and UI rendering. This pipeline enables continuous real-time prediction while maintaining a clear separation between computer vision processing and application logic.
 
 <p align="center">
-    <img src="assets/live_pose_recognition_pipeline.png" width="950" alt="Live pose recognition pipeline">
+    <img src="assets/diagram/live_pose_recognition_pipeline.png" width="950" alt="Live pose recognition pipeline">
 </p>
 
 ---
@@ -141,7 +141,7 @@ The dataset collection pipeline automates the process of generating training dat
 When a dataset collection event is triggered, the system captures hand images, extracts landmark features, validates the generated data, and stores the processed samples with associated metadata. This workflow ensures consistent dataset organization and reduces manual data preparation.
 
 <p align="center">
-    <img src="assets/dataset_collection_pipeline.png" width="950" alt="Dataset collection pipeline">
+    <img src="assets/diagram/dataset_collection_pipeline.png" width="950" alt="Dataset collection pipeline">
 </p>
 
 ---
@@ -153,7 +153,7 @@ The model training pipeline manages the complete machine learning workflow from 
 The pipeline performs dataset validation, feature and label separation, train-test splitting, model training, evaluation, and model serialization. This structure allows the training process to be repeatable, testable, and independent from the real-time inference system.
 
 <p align="center">
-    <img src="assets/model_training_pipeline.png" width="950" alt="Model training pipeline">
+    <img src="assets/diagram/model_training_pipeline.png" width="950" alt="Model training pipeline">
 </p>
 
 ---
