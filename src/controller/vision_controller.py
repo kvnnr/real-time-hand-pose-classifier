@@ -478,6 +478,9 @@ class VisionController:
             print("Training event triggered")
             self.vision_state.accuracy = self.train.train_and_save_model()
             print(f"Accuracy: {self.vision_state.accuracy * 100:.2f}%")
+            
+            self.predictor.reload()
+            self.ui_state.model_loaded = self.predictor.loaded
 
         elif event == VisionEvent.TYPE_CHAR:
             self.ui_state.pose_label = self.keyboard_ops.update_text_input(key, self.ui_state.pose_label)

@@ -98,3 +98,19 @@ class PredictionModel:
         confidence = float(np.max(probabilities))
 
         return (str(prediction),confidence)
+    
+    def reload(self) -> None:
+        """
+        Reload the trained classifier from disk.
+
+        Why:
+            Picks up a newly trained model file
+            without restarting the application.
+
+        Failure Conditions:
+            FileNotFoundError:
+                Trained model does not exist.
+        """
+
+        self._model = joblib.load(self.MODEL_PATH)
+        self.loaded = True
