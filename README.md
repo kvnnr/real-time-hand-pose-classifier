@@ -34,8 +34,10 @@ To improve maintainability and scalability, the project follows a modular pipeli
 
 > **Demo GIF**
 
+Demo recorded using a low-end camera and limited hardware resources. Performance may vary depending on camera quality and system specifications.
+
 <p align="center">
-    <img src="docs/demo.gif" width="850">
+    <img src="assets/demo.gif" width="850">
 </p>
 
 ---
